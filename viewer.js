@@ -1,91 +1,42 @@
+import { loadSTEP } from "./cad/step-loader.js";
+import { buildScene } from "./cad/geometry.js";
+
 (function () {
-    occtimportjs().then((module) => {
-        let occ = module;
-        console.log(9980001, occ);
+  let scene, camera, renderer, occ;
 
-        document.getElementById("fileInput").addEventListener("change", async (e) => {
-            const file = e.target.files[0];
+  function animateStepFile() {
+    requestAnimationFrame(animateStepFile);
+    renderer.render(scene, camera);
+  }
 
-            const buffer = await file.arrayBuffer();
+  async function initRenderer() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf0f0f0);
 
-            const result = await occ.ReadStepFile(buffer);
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(100, 100, 100);
 
-            const meshes = result.meshes;
+    renderer = new THREE.WebGLRenderer({ canvas: document.querySelector("canvas") });
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
-            meshes.forEach((meshData) => {
-                const geometry = new THREE.BufferGeometry();
+    const light = new THREE.AmbientLight(0xffffff, 1);
+    scene.add(light);
 
-                geometry.setAttribute(
-                    "position",
-                    new THREE.Float32BufferAttribute(meshData.vertices, 3)
-                );
+    animateStepFile();
 
-                geometry.setIndex(meshData.indices);
+    occ = await occtimportjs();
+  }
 
-                const material = new THREE.MeshStandardMaterial({
-                    color: 0x0077ff,
-                    metalness: 0.3,
-                    roughness: 0.6
-                });
+  document.getElementById("fileInput").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
 
-                const mesh = new THREE.Mesh(geometry, material);
+    const cadModel = await loadSTEP(file, occ);
 
-                scene.add(mesh);
-            });
-        });
+    const object3D = buildScene(cadModel);
 
-        const canvas = document.getElementById("canvas");
+    scene.add(object3D);
+  });
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf0f0f0);
-
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-
-        camera.position.set(100, 100, 100);
-
-        const renderer = new THREE.WebGLRenderer({
-            canvas: canvas,
-            antialias: true
-        });
-
-        renderer.setSize(window.innerWidth, window.innerHeight);
-
-        // light
-        const light = new THREE.AmbientLight(0xffffff, 1);
-        scene.add(light);
-
-        // simple orbit controls (minimal)
-        let isDragging = false;
-        let prev = { x: 0, y: 0 };
-
-        document.addEventListener("mousedown", (e) => {
-            isDragging = true;
-            prev.x = e.clientX;
-            prev.y = e.clientY;
-        });
-
-        document.addEventListener("mouseup", () => isDragging = false);
-
-        document.addEventListener("mousemove", (e) => {
-            if (!isDragging) return;
-
-            const dx = e.clientX - prev.x;
-            const dy = e.clientY - prev.y;
-
-            scene.rotation.y += dx * 0.005;
-            scene.rotation.x += dy * 0.005;
-
-            prev.x = e.clientX;
-            prev.y = e.clientY;
-        });
-
-        function animate() {
-            requestAnimationFrame(animate);
-            renderer.render(scene, camera);
-        }
-
-        animate();
-        console.log(9980001, "1827")
-    });
+  initRenderer();
 })();
+
