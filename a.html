@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>STEP Viewer</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="ui">
+        <input type="file" id="fileInput" accept=".stp,.step" />
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/occt-import-js@latest/dist/occt-import-js.min.js"></script>
+    <script src="viewer.js"></script>
+</body>
+
+</html>
