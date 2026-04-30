@@ -1,31 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>STEP Viewer</title>
-  <style>
-    body { margin: 0; overflow: hidden; font-family: sans-serif; }
-    #ui {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 10;
-      background: white;
-      padding: 10px;
-      border-radius: 6px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium 3D STEP & STL Viewer</title>
+    
+    <!-- Online3DViewer CDN -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/online-3d-viewer@0.18.0/build/online-3d-viewer.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/online-3d-viewer@0.18.0/build/online-3d-viewer.min.js"></script>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/app.css">
 </head>
-
 <body>
-  <div id="ui">
-    <input type="file" id="fileInput" accept=".stp,.step" />
-  </div>
 
-  <canvas></canvas>
+    <!-- Drag & Drop Overlay -->
+    <div id="drop-zone">
+        <div class="drop-icon">📦</div>
+        <h1>Drop STEP or STL files here</h1>
+        <p>Your model stays 100% in your browser</p>
+    </div>
 
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/occt-import-js@latest/dist/occt-import-js.min.js"></script>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <p style="margin-top: 20px; color: var(--text-secondary);">Processing Model...</p>
+    </div>
 
-  <script type="module" src="./viewer.js"></script>
+    <!-- Main Viewport -->
+    <div id="viewer-container">
+        <!-- Initial State State -->
+        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px;">
+            <h1 style="font-size: 3rem; margin-bottom: 20px; font-weight: 600; letter-spacing: -0.05em;">Premium 3D Viewer</h1>
+            <p style="color: var(--text-secondary); max-width: 500px; line-height: 1.6;">
+                The most advanced browser-based tool for viewing STEP and STL files. 
+                Experience stunning aesthetics with local processing.
+            </p>
+            <button onclick="triggerUpload()" class="tool-btn active" style="margin-top: 30px; padding: 15px 40px; font-size: 1rem;">
+                Select Model to Start
+            </button>
+        </div>
+    </div>
+
+    <!-- Sidebar Panel -->
+    <aside id="sidebar">
+        <div class="sidebar-header">
+            <h2>Model Explorer</h2>
+            <button onclick="document.getElementById('sidebar').classList.toggle('collapsed')" class="tool-btn" style="padding: 5px;">✕</button>
+        </div>
+
+        <div class="panel-section">
+            <h3 class="section-title">Part Tree</h3>
+            <ul id="part-tree">
+                <li class="info-item" style="color: var(--text-secondary); font-style: italic;">No model loaded</li>
+            </ul>
+        </div>
+
+        <div class="panel-section">
+            <h3 class="section-title">Model Statistics</h3>
+            <ul id="model-info">
+                <li class="info-item" style="color: var(--text-secondary); font-style: italic;">No metadata available</li>
+            </ul>
+        </div>
+    </aside>
+
+    <!-- Floating Toolbar -->
+    <nav id="toolbar">
+        <button onclick="setMode('shaded')" class="tool-btn mode-btn active">Shaded</button>
+        <button onclick="setMode('edges')" class="tool-btn mode-btn">Edges</button>
+        <button onclick="setMode('wireframe')" class="tool-btn mode-btn">Wireframe</button>
+        <div style="width: 1px; background: var(--border-color); margin: 5px 0;"></div>
+        <button id="rotate-btn" onclick="toggleAutoRotate()" class="tool-btn">⟳ 360°</button>
+        <button onclick="zoomToFit()" class="tool-btn">⊞ Fit</button>
+        <button onclick="takeScreenshot()" class="tool-btn">📷 Shot</button>
+    </nav>
+
+    <!-- Application Logic -->
+    <script src="js/app.js"></script>
+
 </body>
 </html>
