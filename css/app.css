@@ -2,11 +2,6 @@
   z-index: 9999;
 }
 
-.ov_panel_set_menu {
-  width: 44px;
-}
-
-
 .ov_navigator_info_panel {
   display: none;
 }
@@ -37,36 +32,3 @@
 .stp_viewer .header .title {
   display: none;
 }
-
-/* 
-.stp_viewer {
-  height: 100%;
-}
-
-.stp_viewer .toolbar {
-  height: 40px;
-  overflow: auto;
-}
-
-.stp_viewer .main {
-  height: calc(100% - 40px);
-}
-
-.stp_viewer div.side_bar_container {
-  height: 100% !important;
-  margin: 0;
-}
-
-.stp_viewer div.main_navigator {
-  margin: 0;
-}
-
-.stp_viewer .main_splitter {
-  width: 8px;
-}
-
-.stp_viewer div.main_sidebar {
-  height: 100% !important;
-  margin: 0;
-}
-  */
