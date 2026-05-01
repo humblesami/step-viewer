@@ -359,3 +359,48 @@ body.drag-over .intro::after {
 .ov_modal.ov_dialog {
   z-index: 9999;
 }
+
+.ov_panel_set_menu {
+  width: 44px;
+  background-color: white;
+}
+
+div.ov_panel_set_menu div.ov_panel_set_menu_button {
+  display: flex;
+  border: 1px solid;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+}
+
+.ov_navigator_info_panel {
+  display: none;
+}
+
+.ov_sidebar_parameter .ov_sidebar_parameter_toggle.ov_toggle {
+  background-color: silver;
+  height: 16px;
+  width: 32px;
+}
+
+.ov_sidebar_parameter_toggle.ov_toggle.on {
+  background-color: white;
+}
+
+.ov_sidebar_parameter_toggle.ov_toggle.on .ov_toggle_slider {
+  background-color: blue;
+  border: 0;
+}
+
+.ov_sidebar_parameter_toggle.ov_toggle .ov_toggle_slider {
+  width: 10px;
+  height: 10px;
+}
+
+.ov_sidebar_content div.ov_sidebar_settings_sections {
+  height: calc(100vh - 150px) !important;
+}
+
+.ov_panel_set_content.ov_thin_scrollbar .ov_navigator_buttons {
+  background-color: #edeced;
+}
