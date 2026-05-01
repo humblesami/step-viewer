@@ -1,377 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-/* ─── Design Tokens ─────────────────────────────────────── */
-:root {
-  --bg: #080b14;
-  --bg-2: #0d1120;
-  --panel-bg: rgba(13, 17, 32, 0.92);
-  --accent: #5b6cf9;
-  --accent-glow: rgba(91, 108, 249, 0.35);
-  --accent-hover: #7c8dff;
-  --text-1: #e2e8f8;
-  --text-2: #8892b0;
-  --text-3: #4a5570;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-bright: rgba(255, 255, 255, 0.14);
-  --radius-full: 9999px;
-  --blur: blur(24px);
-  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* ─── Global Reset ───────────────────────────────────────── */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  overflow: hidden;
-}
-
-body {
-  font-family: 'Inter', system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--text-1);
-}
-
-/* ─── OV Engine: background colors (non-layout overrides) ── */
-.main_viewer canvas {
-  background: var(--bg) !important;
-}
-
-/* ─── Header: glassmorphism ─────────────────────────────── */
-.header {
-  background: var(--panel-bg) !important;
-  backdrop-filter: var(--blur) !important;
-  -webkit-backdrop-filter: var(--blur) !important;
-  border-bottom: 1px solid var(--border) !important;
-}
-
-/* Brand in header */
-.title_left .brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 20px;
-  height: 100%;
-}
-
-.brand-icon {
-  font-size: 1.3rem;
-  color: var(--accent);
-  filter: drop-shadow(0 0 6px var(--accent));
-}
-
-.brand-name {
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  background: linear-gradient(135deg, #e2e8f8 0%, #a0abcc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* ─── Toolbar ────────────────────────────────────────────── */
-.ov_toolbar_button,
-.ov_icon_button {
-  color: var(--text-2) !important;
-  transition: color var(--transition), background var(--transition) !important;
-}
-
-.ov_toolbar_button:hover,
-.ov_icon_button:hover {
-  color: var(--text-1) !important;
-  background: rgba(255, 255, 255, 0.06) !important;
-}
-
-.ov_toolbar_button.selected {
-  color: var(--accent) !important;
-}
-
-/* ─── Navigator & Sidebar panels ────────────────────────── */
-.main_navigator,
-.ov_panel_set_container {
-  background: var(--panel-bg) !important;
-  backdrop-filter: var(--blur) !important;
-  border-right: 1px solid var(--border) !important;
-}
-
-.main_sidebar,
-.ov_panel_set_right_container {
-  background: var(--panel-bg) !important;
-  backdrop-filter: var(--blur) !important;
-  border-left: 1px solid var(--border) !important;
-}
-
-/* Panel header buttons */
-.ov_panel_button {
-  color: var(--text-2) !important;
-}
-
-.ov_panel_button.selected {
-  color: var(--accent) !important;
-  border-bottom-color: var(--accent) !important;
-}
-
-/* Tree items */
-.ov_tree_item:hover {
-  background: rgba(255, 255, 255, 0.04) !important;
-}
-
-.ov_tree_item.selected {
-  background: rgba(91, 108, 249, 0.15) !important;
-}
-
-/* ─── Intro: decorative styling only, no layout override ── */
-/* OV manages display/position — we only paint it */
-.intro {
-  background: var(--bg) !important;
-}
-
-/* Animated grid background — pseudo element on intro_content */
-.intro_content {
-  position: relative;
-}
-
-.intro_content::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(var(--border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--border) 1px, transparent 1px);
-  background-size: 60px 60px;
-  opacity: 0.6;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.intro_content::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(91, 108, 249, 0.1) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Stack intro children above pseudo-elements */
-.intro_content>* {
-  position: relative;
-  z-index: 1;
-}
-
-/* Intro hero layout */
-.intro_hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-  padding: 40px 20px;
-}
-
-/* Floating hex logo */
-.intro_logo_wrap {
-  width: 84px;
-  height: 84px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(91, 108, 249, 0.22) 0%, rgba(91, 108, 249, 0.06) 100%);
-  border: 1px solid rgba(91, 108, 249, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 28px;
-  box-shadow: 0 0 40px rgba(91, 108, 249, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  animation: float 4s ease-in-out infinite;
-}
-
-.intro_logo_icon {
-  font-size: 2.8rem;
-  color: var(--accent);
-  filter: drop-shadow(0 0 10px var(--accent));
-}
-
-@keyframes float {
-
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-.intro_title {
-  font-size: clamp(2.4rem, 6vw, 4rem);
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  margin: 0 0 16px;
-  background: linear-gradient(135deg, #ffffff 0%, #a0abcc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.intro_subtitle {
-  font-size: 1.05rem;
-  color: var(--text-2);
-  line-height: 1.6;
-  max-width: 460px;
-  margin: 0 0 34px;
-  text-align: center;
-}
-
-/* Open File button */
-.intro_actions {
-  margin-bottom: 18px;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 34px;
-  border-radius: var(--radius-full);
-  border: none;
-  font-family: inherit;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--accent) 0%, #7c5cfc 100%);
-  color: #fff;
-  box-shadow: 0 8px 28px var(--accent-glow), 0 1px 0 rgba(255, 255, 255, 0.15) inset;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 14px 36px var(--accent-glow);
-}
-
-.btn-primary:active {
-  transform: translateY(0) scale(0.98);
-}
-
-.btn-icon {
-  font-size: 1.05rem;
-}
-
-/* Drag & drop hint text */
-.intro_dragdrop_text {
-  color: var(--text-3) !important;
-  font-size: 0.85rem !important;
-  margin-bottom: 32px !important;
-  letter-spacing: 0.02em;
-}
-
-/* Drag-over visual state */
-body.drag-over .intro::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  border: 2px dashed rgba(91, 108, 249, 0.55);
-  border-radius: 8px;
-  pointer-events: none;
-  z-index: 10001;
-}
-
-/* Format badges */
-.format_badges {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-  max-width: 520px;
-}
-
-.badge {
-  padding: 5px 12px;
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-bright);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: var(--text-2);
-  text-transform: uppercase;
-  transition: all var(--transition);
-}
-
-.badge:hover {
-  background: rgba(91, 108, 249, 0.12);
-  border-color: rgba(91, 108, 249, 0.4);
-  color: var(--accent-hover);
-  cursor: default;
-}
-
-/* ─── Scrollbars ─────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-bright);
-  border-radius: 4px;
-}
-
-/* ─── OV progress bar ────────────────────────────────────── */
-.ov_progress {
-  background: rgba(91, 108, 249, 0.15) !important;
-}
-
-.ov_progress_bar {
-  background: var(--accent) !important;
-}
-
-/* ─── Responsive ─────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .intro_title {
-    font-size: 2.2rem;
-  }
-
-  .intro_subtitle {
-    font-size: 0.9rem;
-  }
-
-  .btn {
-    padding: 12px 24px;
-    font-size: 0.9rem;
-  }
-}
-
 .ov_modal.ov_dialog {
   z-index: 9999;
 }
 
 .ov_panel_set_menu {
   width: 44px;
-  background-color: white;
 }
 
-div.ov_panel_set_menu div.ov_panel_set_menu_button {
-  display: flex;
-  border: 1px solid;
-  justify-content: center;
-  width: 100%;
-  height: 40px;
-}
 
 .ov_navigator_info_panel {
   display: none;
@@ -379,8 +13,7 @@ div.ov_panel_set_menu div.ov_panel_set_menu_button {
 
 .ov_sidebar_parameter .ov_sidebar_parameter_toggle.ov_toggle {
   background-color: silver;
-  height: 16px;
-  width: 32px;
+  height: 9px;
 }
 
 .ov_sidebar_parameter_toggle.ov_toggle.on {
@@ -397,10 +30,43 @@ div.ov_panel_set_menu div.ov_panel_set_menu_button {
   height: 10px;
 }
 
-.ov_sidebar_content div.ov_sidebar_settings_sections {
-  height: calc(100vh - 150px) !important;
-}
-
 .ov_panel_set_content.ov_thin_scrollbar .ov_navigator_buttons {
   background-color: #edeced;
 }
+
+.stp_viewer .header .title {
+  display: none;
+}
+
+/* 
+.stp_viewer {
+  height: 100%;
+}
+
+.stp_viewer .toolbar {
+  height: 40px;
+  overflow: auto;
+}
+
+.stp_viewer .main {
+  height: calc(100% - 40px);
+}
+
+.stp_viewer div.side_bar_container {
+  height: 100% !important;
+  margin: 0;
+}
+
+.stp_viewer div.main_navigator {
+  margin: 0;
+}
+
+.stp_viewer .main_splitter {
+  width: 8px;
+}
+
+.stp_viewer div.main_sidebar {
+  height: 100% !important;
+  margin: 0;
+}
+  */
