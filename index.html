@@ -8,102 +8,105 @@
     content="Premium 3D STEP, STL & CAD file viewer — open and inspect 3D models directly in your browser. No upload required.">
   <title>STEP Viewer — Premium 3D CAD Viewer</title>
   <!-- Local Online3DViewer Build -->
-  <link rel="stylesheet" type="text/css" href="./website_dev/o3dv.website.min.css">
-  <script type="text/javascript" src="./website_dev/o3dv.website.min.js"></script>
 
-  <!-- Premium Styles -->
-  <link rel="stylesheet" href="css/app.css">
-
-  <script type="text/javascript">
-    OV.StartWebsite();
-  </script>
 </head>
 
 <body>
-  <input type="file" id="open_file" style="display:none;" multiple>
+  <div class="model_viewer_container">
+    <link rel="stylesheet" type="text/css" href="./website_dev/o3dv.website.min.css">
+    <script type="text/javascript" src="./website_dev/o3dv.website.min.js"></script>
 
-  <!-- Header -->
-  <div class="header" id="header">
-    <div class="title">
-      <div class="title_left">
-        <div class="brand">
-          <span class="brand-icon">⬡</span>
-          <span class="brand-name">STEP Viewer</span>
+    <!-- Premium Styles -->
+    <link rel="stylesheet" href="css/app.css">
+
+    <script type="text/javascript">
+      OV.StartWebsite();
+    </script>
+    <input type="file" id="open_file" style="display:none;" multiple>
+
+    <!-- Header -->
+    <div class="header" id="header">
+      <div class="title">
+        <div class="title_left">
+          <div class="brand">
+            <span class="brand-icon">⬡</span>
+            <span class="brand-name">STEP Viewer</span>
+          </div>
         </div>
+        <div class="title_right" id="header_buttons"></div>
+        <div class="main_file_name only_full_width" id="main_file_name"></div>
       </div>
-      <div class="title_right" id="header_buttons"></div>
-      <div class="main_file_name only_full_width" id="main_file_name"></div>
-    </div>
-    <div class="toolbar" id="toolbar"></div>
-  </div>
-
-  <!-- Main Viewer Area -->
-  <div class="main" id="main">
-    <div class="main_left_container only_full_width" id="main_left_container">
-      <div class="main_navigator ov_panel_set_container" id="main_navigator"></div>
-      <div class="main_splitter" id="main_navigator_splitter"></div>
+      <div class="toolbar" id="toolbar"></div>
     </div>
 
-    <div class="main_viewer" id="main_viewer"></div>
-
-    <div class="main_right_container only_full_width" id="main_right_container">
-      <div class="main_splitter" id="main_sidebar_splitter"></div>
-      <div class="main_sidebar ov_panel_set_right_container" id="main_sidebar"></div>
-    </div>
-  </div>
-
-  <!-- Intro / Landing Screen -->
-  <div class="intro ov_thin_scrollbar" id="intro">
-    <div class="intro_content" id="intro_content">
-
-      <!-- Hero -->
-      <div class="intro_hero">
-        <div class="intro_logo_wrap">
-          <span class="intro_logo_icon">⬡</span>
-        </div>
-        <h1 class="intro_title">STEP Viewer</h1>
-        <p class="intro_subtitle">Open and inspect 3D CAD models instantly — no upload, no account, fully local.</p>
-
-        <div class="intro_actions">
-          <button id="open-file-btn" class="btn btn-primary" onclick="document.getElementById('open_file').click()">
-            <span class="btn-icon">📂</span> Open File
-          </button>
-        </div>
-
-        <div class="intro_dragdrop_text" id="intro_dragdrop_text">or drag & drop files anywhere</div>
-
-        <!-- Format badges -->
-        <div class="format_badges">
-          <span class="badge">STEP</span>
-          <span class="badge">STP</span>
-          <span class="badge">STL</span>
-          <span class="badge">OBJ</span>
-          <span class="badge">GLTF</span>
-          <span class="badge">IFC</span>
-          <span class="badge">FBX</span>
-          <span class="badge">3MF</span>
-          <span class="badge">IGES</span>
-          <span class="badge">PLY</span>
-        </div>
+    <!-- Main Viewer Area -->
+    <div class="main" id="main">
+      <div class="main_left_container only_full_width" id="main_left_container">
+        <div class="main_navigator ov_panel_set_container" id="main_navigator"></div>
+        <div class="main_splitter" id="main_navigator_splitter"></div>
       </div>
 
-      <!-- Hidden format list required by OV engine -->
-      <div class="intro_formats" style="display:none;">
-        <div class="intro_formats_title" id="intro_formats_title"></div>
-        <div class="intro_file_formats">
-          <a href="#">step</a><a href="#">stp</a><a href="#">stl</a>
-          <a href="#">obj</a><a href="#">gltf</a><a href="#">glb</a>
-          <a href="#">ifc</a><a href="#">fbx</a><a href="#">3mf</a>
-          <a href="#">ply</a><a href="#">iges</a><a href="#">igs</a>
-          <a href="#">3dm</a><a href="#">3ds</a><a href="#">dae</a>
-          <a href="#">wrl</a><a href="#">off</a><a href="#">amf</a>
-        </div>
-      </div>
+      <div class="main_viewer" id="main_viewer"></div>
 
+      <div class="main_right_container only_full_width" id="main_right_container">
+        <div class="main_splitter" id="main_sidebar_splitter"></div>
+        <div class="main_sidebar ov_panel_set_right_container" id="main_sidebar"></div>
+      </div>
     </div>
+
+    <!-- Intro / Landing Screen -->
+    <div class="intro ov_thin_scrollbar" id="intro">
+      <div class="intro_content" id="intro_content">
+
+        <!-- Hero -->
+        <div class="intro_hero">
+          <div class="intro_logo_wrap">
+            <span class="intro_logo_icon">⬡</span>
+          </div>
+          <h1 class="intro_title">STEP Viewer</h1>
+          <p class="intro_subtitle">Open and inspect 3D CAD models instantly — no upload, no account, fully local.</p>
+
+          <div class="intro_actions">
+            <button id="open-file-btn" class="btn btn-primary" onclick="document.getElementById('open_file').click()">
+              <span class="btn-icon">📂</span> Open File
+            </button>
+          </div>
+
+          <div class="intro_dragdrop_text" id="intro_dragdrop_text">or drag & drop files anywhere</div>
+
+          <!-- Format badges -->
+          <div class="format_badges">
+            <span class="badge">STEP</span>
+            <span class="badge">STP</span>
+            <span class="badge">STL</span>
+            <span class="badge">OBJ</span>
+            <span class="badge">GLTF</span>
+            <span class="badge">IFC</span>
+            <span class="badge">FBX</span>
+            <span class="badge">3MF</span>
+            <span class="badge">IGES</span>
+            <span class="badge">PLY</span>
+          </div>
+        </div>
+
+        <!-- Hidden format list required by OV engine -->
+        <div class="intro_formats" style="display:none;">
+          <div class="intro_formats_title" id="intro_formats_title"></div>
+          <div class="intro_file_formats">
+            <a href="#">step</a><a href="#">stp</a><a href="#">stl</a>
+            <a href="#">obj</a><a href="#">gltf</a><a href="#">glb</a>
+            <a href="#">ifc</a><a href="#">fbx</a><a href="#">3mf</a>
+            <a href="#">ply</a><a href="#">iges</a><a href="#">igs</a>
+            <a href="#">3dm</a><a href="#">3ds</a><a href="#">dae</a>
+            <a href="#">wrl</a><a href="#">off</a><a href="#">amf</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <script src="./js/app.js"></script>
   </div>
 
-  <script src="./js/app.js"></script>
 </body>
 
 </html>
