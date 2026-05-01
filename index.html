@@ -1,82 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium 3D STEP & STL Viewer</title>
-    
-    <!-- Online3DViewer CDN -->
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/online-3d-viewer@0.18.0/build/online-3d-viewer.min.css">
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/online-3d-viewer@0.18.0/build/online-3d-viewer.min.js"></script>
-    
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="css/app.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no">
+  <title>Premium 3D STEP & STL Viewer</title>
+
+  <!-- Official Online3DViewer Website Build Assets -->
+  <link rel="stylesheet" type="text/css" href="https://3dviewer.net/o3dv/o3dv.website.min.css?v=0.18.0">
+  <!-- <script type="text/javascript" src="https://3dviewer.net/o3dv/o3dv.website.min.js?v=0.18.0"></script> -->
+  <script type="text/javascript" src="./js/o3dv.min.js"></script>
+
+  <!-- Custom Premium Styles -->
+  <link rel="stylesheet" href="css/app.css">
+
+  <script type="text/javascript">
+    // Start the official website engine
+    window.addEventListener('load', () => {
+      if (typeof OV !== 'undefined') {
+        OV.StartWebsite();
+        // Custom UI hooks
+        if (window.setupPremiumUI) window.setupPremiumUI();
+      } else {
+        console.error("OV is not defined. Library failed to load.");
+      }
+    });
+  </script>
 </head>
+
 <body>
+  <!-- Official Structure (Required by OV.StartWebsite) -->
+  <input type="file" id="open_file" style="display:none;" multiple>
 
-    <!-- Drag & Drop Overlay -->
-    <div id="drop-zone">
-        <div class="drop-icon">📦</div>
-        <h1>Drop STEP or STL files here</h1>
-        <p>Your model stays 100% in your browser</p>
+  <div class="header" id="header">
+    <div class="title">
+      <div class="title_left">
+        <h1 style="font-size: 1.2rem; font-weight: 600; padding: 0 20px;">Premium Viewer</h1>
+      </div>
+      <div class="title_right" id="header_buttons"></div>
+      <div class="main_file_name only_full_width" id="main_file_name"></div>
+    </div>
+    <div class="toolbar" id="toolbar"></div>
+  </div>
+
+  <div class="main" id="main">
+    <div class="main_left_container only_full_width" id="main_left_container">
+      <div class="main_navigator ov_panel_set_container" id="main_navigator"></div>
+      <div class="main_splitter" id="main_navigator_splitter"></div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay">
-        <div class="spinner"></div>
-        <p style="margin-top: 20px; color: var(--text-secondary);">Processing Model...</p>
+    <div class="main_viewer" id="main_viewer"></div>
+
+    <div class="main_right_container only_full_width" id="main_right_container">
+      <div class="main_splitter" id="main_sidebar_splitter"></div>
+      <div class="main_sidebar ov_panel_set_right_container" id="main_sidebar"></div>
     </div>
+  </div>
 
-    <!-- Main Viewport -->
-    <div id="viewer-container">
-        <!-- Initial State State -->
-        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px;">
-            <h1 style="font-size: 3rem; margin-bottom: 20px; font-weight: 600; letter-spacing: -0.05em;">Premium 3D Viewer</h1>
-            <p style="color: var(--text-secondary); max-width: 500px; line-height: 1.6;">
-                The most advanced browser-based tool for viewing STEP and STL files. 
-                Experience stunning aesthetics with local processing.
-            </p>
-            <button onclick="triggerUpload()" class="tool-btn active" style="margin-top: 30px; padding: 15px 40px; font-size: 1rem;">
-                Select Model to Start
-            </button>
+  <div class="intro ov_thin_scrollbar" id="intro">
+    <div class="intro_content" id="intro_content">
+      <div class="intro_logo">
+        <h1 style="font-size: 3.5rem; margin-bottom: 10px; font-weight: 600; letter-spacing: -0.05em;">Premium 3D Viewer
+        </h1>
+        <div class="intro_dragdrop_text" id="intro_dragdrop_text">Drop models here or click below</div>
+        <button onclick="document.getElementById('open_file').click()" class="tool-btn active"
+          style="margin-top: 30px; padding: 15px 40px; font-size: 1.1rem; align-self: center;">
+          Open STEP / STL File
+        </button>
+      </div>
+      <!-- Format list needed by the engine -->
+      <div class="intro_formats" style="display:none;">
+        <div class="intro_formats_title" id="intro_formats_title"></div>
+        <div class="intro_file_formats">
+          <a href="#">step</a>
+          <a href="#">stl</a>
         </div>
+      </div>
     </div>
+  </div>
 
-    <!-- Sidebar Panel -->
-    <aside id="sidebar">
-        <div class="sidebar-header">
-            <h2>Model Explorer</h2>
-            <button onclick="document.getElementById('sidebar').classList.toggle('collapsed')" class="tool-btn" style="padding: 5px;">✕</button>
-        </div>
-
-        <div class="panel-section">
-            <h3 class="section-title">Part Tree</h3>
-            <ul id="part-tree">
-                <li class="info-item" style="color: var(--text-secondary); font-style: italic;">No model loaded</li>
-            </ul>
-        </div>
-
-        <div class="panel-section">
-            <h3 class="section-title">Model Statistics</h3>
-            <ul id="model-info">
-                <li class="info-item" style="color: var(--text-secondary); font-style: italic;">No metadata available</li>
-            </ul>
-        </div>
-    </aside>
-
-    <!-- Floating Toolbar -->
-    <nav id="toolbar">
-        <button onclick="setMode('shaded')" class="tool-btn mode-btn active">Shaded</button>
-        <button onclick="setMode('edges')" class="tool-btn mode-btn">Edges</button>
-        <button onclick="setMode('wireframe')" class="tool-btn mode-btn">Wireframe</button>
-        <div style="width: 1px; background: var(--border-color); margin: 5px 0;"></div>
-        <button id="rotate-btn" onclick="toggleAutoRotate()" class="tool-btn">⟳ 360°</button>
-        <button onclick="zoomToFit()" class="tool-btn">⊞ Fit</button>
-        <button onclick="takeScreenshot()" class="tool-btn">📷 Shot</button>
+  <!-- Custom UI Overlays (Managed by app.js) -->
+  <div id="custom-ui">
+    <nav id="custom-toolbar">
+      <button id="fit-btn" class="tool-btn">⊞ Fit</button>
+      <button id="rotate-btn" class="tool-btn">⟳ 360°</button>
+      <button id="shot-btn" class="tool-btn">📷 Shot</button>
     </nav>
+  </div>
 
-    <!-- Application Logic -->
-    <script src="js/app.js"></script>
-
+  <script src="./js/app.js"></script>
 </body>
+
 </html>
