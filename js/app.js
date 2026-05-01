@@ -6,14 +6,13 @@ window.setupPremiumUI = () => {
     const fileInput = document.getElementById('open_file');
 
     if (!(OV && OV.Engine && typeof OV.Engine.Init3DViewerFromFileList === 'function')) {
-        console.log(9989, "Module not found => OV.Init3DViewerFromFileList not found", OV);
+        console.log(9989, "Module not found => Init3DViewerFromFileList not found", OV);
         return;
     }
 
     // 1. Explicitly handle file selection
     fileInput.onchange = (e) => {
         const files = Array.from(e.target.files);
-        console.log(99890, OV);
         if (files.length > 0) {
             console.log("Files selected, initializing viewer:", files);
             OV.Engine.Init3DViewerFromFileList(document.getElementById('main_viewer'), files);
