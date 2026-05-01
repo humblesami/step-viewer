@@ -12,7 +12,7 @@
 </head>
 
 <body>
-  <div class="model_viewer_container">
+  <div class="stp_viewer">
     <link rel="stylesheet" type="text/css" href="./website_dev/o3dv.website.min.css">
     <script type="text/javascript" src="./website_dev/o3dv.website.min.js"></script>
 
@@ -22,10 +22,10 @@
     <script type="text/javascript">
       OV.StartWebsite();
     </script>
-    <input type="file" id="open_file" style="display:none;" multiple>
+    <input type="file" class="open_file" style="display:none;" multiple>
 
     <!-- Header -->
-    <div class="header" id="header">
+    <div class="header">
       <div class="title">
         <div class="title_left">
           <div class="brand">
@@ -33,30 +33,30 @@
             <span class="brand-name">STEP Viewer</span>
           </div>
         </div>
-        <div class="title_right" id="header_buttons"></div>
-        <div class="main_file_name only_full_width" id="main_file_name"></div>
+        <div class="title_right header_buttons"></div>
+        <div class="main_file_name only_full_width"></div>
       </div>
-      <div class="toolbar" id="toolbar"></div>
+      <div class="toolbar"></div>
     </div>
 
     <!-- Main Viewer Area -->
-    <div class="main" id="main">
-      <div class="main_left_container only_full_width" id="main_left_container">
-        <div class="main_navigator ov_panel_set_container" id="main_navigator"></div>
-        <div class="main_splitter" id="main_navigator_splitter"></div>
+    <div class="main">
+      <div class="main_left_container only_full_width">
+        <div class="main_navigator ov_panel_set_container"></div>
+        <div class="main_splitter main_navigator_splitter"></div>
       </div>
 
-      <div class="main_viewer" id="main_viewer"></div>
+      <div class="main_viewer"></div>
 
-      <div class="main_right_container only_full_width" id="main_right_container">
-        <div class="main_splitter" id="main_sidebar_splitter"></div>
-        <div class="main_sidebar ov_panel_set_right_container" id="main_sidebar"></div>
+      <div class="main_right_container only_full_width">
+        <div class="main_splitter main_sidebar_splitter"></div>
+        <div class="main_sidebar ov_panel_set_right_container"></div>
       </div>
     </div>
 
     <!-- Intro / Landing Screen -->
-    <div class="intro ov_thin_scrollbar" id="intro">
-      <div class="intro_content" id="intro_content">
+    <div class="intro ov_thin_scrollbar">
+      <div class="intro_content">
 
         <!-- Hero -->
         <div class="intro_hero">
@@ -67,12 +67,13 @@
           <p class="intro_subtitle">Open and inspect 3D CAD models instantly — no upload, no account, fully local.</p>
 
           <div class="intro_actions">
-            <button id="open-file-btn" class="btn btn-primary" onclick="document.getElementById('open_file').click()">
+            <button class="btn btn-primary open-file-btn"
+              onclick="document.querySelector('.stp_viewer .open_file').click()">
               <span class="btn-icon">📂</span> Open File
             </button>
           </div>
 
-          <div class="intro_dragdrop_text" id="intro_dragdrop_text">or drag & drop files anywhere</div>
+          <div class="intro_dragdrop_text">or drag & drop files anywhere</div>
 
           <!-- Format badges -->
           <div class="format_badges">

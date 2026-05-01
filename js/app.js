@@ -36,7 +36,7 @@
   /* ── Page-title: show file name once loaded ─────────────── */
   const origTitle = document.title;
 
-  const fileNameEl = document.getElementById('main_file_name');
+  const fileNameEl = document.querySelector('.stp_viewer .main_file_name');
   if (fileNameEl) {
     const titleObserver = new MutationObserver(() => {
       const name = fileNameEl.textContent.trim();
