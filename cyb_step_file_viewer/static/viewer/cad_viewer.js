@@ -1169,6 +1169,8 @@ export class CadViewer {
             if (filename) {
                 file_url += `/` + filename;
             }
+            // Add a cache-buster so the browser doesn't load the old HTTP cache
+            file_url += `?t=${new Date().getTime()}`;
         }
 
         const viewer = new CadViewer(root, file_url, {

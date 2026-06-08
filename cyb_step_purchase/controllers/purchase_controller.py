@@ -19,7 +19,7 @@ class VendorPurchasePortal(CustomerPortal):
             if purchase_order_line.finished_client_model:
                 purchase_order_line.finished_client_model.sudo().unlink()
             attachment = request.env['ir.attachment'].sudo().create({
-                'name': f'Finished_Model_PO_Line_{order_line_id}.glb',
+                'name': f'Finished_Model_{order_line_id}.glb',
                 'datas': model_data,
                 'res_model': 'purchase.order.line',
                 'res_id': int(order_line_id),
