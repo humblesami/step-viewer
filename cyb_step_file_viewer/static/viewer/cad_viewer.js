@@ -1201,7 +1201,7 @@ export class CadViewer {
                         const base64ModelData = window.btoa(binary);
 
                         async function saveToOdoo() {
-                            console.log('Saving model to Odoo...');
+                            console.log('Saving this model to Odoo...');
                             try {
                                 const response = await fetch('/step_file_viewer/save_model', {
                                     method: 'POST',
@@ -1216,9 +1216,15 @@ export class CadViewer {
                                 });
                                 if (response.ok) {
                                     const responseJSON = await response.json();
+                                    console.log(responseJSON, 'responseJSON');
+                                    if (responseJSON.error) {
+                                        alert(responseJSON.error.message);
+                                        return;
+                                    }
                                     const responseData = responseJSON.result;
+                                    console.log(responseData, 'responseData');
                                     if (responseData.status === 'success') {
-                                        alert('Model saved successfully! You can close the viewer.');
+                                        window.parent.location.reload();
                                     } else {
                                         alert('Error saving model 1: ' + responseData.status + ' - ' + responseData.message);
                                     }

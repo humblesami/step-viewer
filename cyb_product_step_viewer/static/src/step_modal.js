@@ -14,8 +14,6 @@ publicWidget.registry.StepViewer = publicWidget.Widget.extend({
 
     start: function () {
         window.addEventListener('message', this._onMessage);
-        // Bind close button
-        $('.close-step-viewer').on('click', this._closeViewer.bind(this));
         return this._super.apply(this, arguments);
     },
 

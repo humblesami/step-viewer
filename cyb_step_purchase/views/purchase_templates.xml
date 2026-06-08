@@ -3,6 +3,13 @@
     <template id="purchase_order_portal_content_inherit_step" inherit_id="purchase.purchase_order_portal_content">
 
         <!-- 1. Inject the 3D Model buttons under the product name in each line -->
+        <xpath expr="//div[@id='introduction']" position="before">
+        <style>
+        .purchase_tbody #product_name {
+            flex-direction: column;
+        }
+        </style>
+        </xpath>
         <xpath expr="//td[@id='product_name']" position="inside">
             <!-- Access step_files via the product_template associated with the line -->
             <t t-set="step_files" t-value="line.product_id.product_tmpl_id.step_files"/>
@@ -51,9 +58,6 @@
                 <div id="step_viewer_iframe_container" class="modal-overlay">
                     <link rel="stylesheet" href="/cyb_product_step_viewer/static/css/product_page.css"/>
                     <div class="modal-container">
-                        <button type="button" class="close-step-viewer">
-                            <i class="fa fa-times-circle"></i>
-                        </button>
                         <iframe id="step_viewer_iframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
                     </div>
                 </div>
