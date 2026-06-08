@@ -17,25 +17,19 @@ class VendorPurchasePortal(CustomerPortal):
             purchase_order_line = request.env['purchase.order.line'].sudo().browse(int(order_line_id))
 
             if purchase_order_line.finished_client_model:
-                # Update existing attachment
-                purchase_order_line.finished_client_model.sudo().write({
-                    'datas': model_data,
-                })
-            else:
-                # Create the actual attachment in Odoo
-                attachment = request.env['ir.attachment'].sudo().create({
-                    'name': f'Finished_Model_PO_Line_{order_line_id}.glb',
-                    'datas': model_data,
-                    'res_model': 'purchase.order.line',
-                    'res_id': int(order_line_id),
-                    'type': 'binary',
-                    'mimetype': 'model/gltf-binary',
-                    'public': True,
-                })
-                # Link it to the purchase order line
-                purchase_order_line.write({
-                    'finished_client_model': attachment.id,
-                })
+                purchase_order_line.finished_client_model.sudo().unlink()
+            attachment = request.env['ir.attachment'].sudo().create({
+                'name': f'Finished_Model_PO_Line_{order_line_id}.glb',
+                'datas': model_data,
+                'res_model': 'purchase.order.line',
+                'res_id': int(order_line_id),
+                'type': 'binary',
+                'mimetype': 'model/gltf-binary',
+                'public': True,
+            })
+            purchase_order_line.write({
+                'finished_client_model': attachment.id,
+            })
 
             return {'status': 'success', 'message': 'Model saved successfully'}
         except Exception as e:

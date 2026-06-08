@@ -39,9 +39,12 @@ publicWidget.registry.StepViewer = publicWidget.Widget.extend({
         if ($btn.data('order-line-id')) {
             query_params += `&order_line_id=${$btn.data('order-line-id')}`;
         }
+        const tt = Date.now();
+        query_params += `&t=${tt}`;
 
         let iframeSrc = window.location.origin + web_page + query_params;
         $iframe.attr('src', iframeSrc);
+        console.log(iframeSrc, 'iframeSrc');
 
         $('#product_detail_main').addClass('viewer_active');
         $('#top').addClass('viewer_active');
