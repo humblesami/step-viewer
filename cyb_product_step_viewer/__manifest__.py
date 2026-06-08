@@ -9,6 +9,9 @@
         'views/website_product_templates.xml',
     ],
     'assets': {
+        'web.assets_backend': [
+            'cyb_product_step_viewer/static/src/backend_3d_widget.js',
+        ],
         'web.assets_frontend': [
             'cyb_product_step_viewer/static/src/step_modal.js',
         ],
