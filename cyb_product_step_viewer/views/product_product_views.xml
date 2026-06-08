@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="product_normal_form_view_inherit_step" model="ir.ui.view">
+        <field name="name">product.product.form.inherit.step</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales']" position="after">
+                <page string="3D Models" name="step_files">
+                    <group>
+                        <field name="step_files" widget="many2many_binary" string="STEP Files"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_template_only_form_view_inherit_step" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.step</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales']" position="after">
+                <page string="3D Models" name="step_files">
+                    <group>
+                        <field name="step_files" widget="many2many_binary" string="STEP Files"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

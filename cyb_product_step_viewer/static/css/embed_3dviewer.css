@@ -1,0 +1,83 @@
+#step_viewer_modal {
+  position: relative;
+}
+
+#step_viewer_modal.ov_init_hidden {
+  visibility: hidden;
+}
+
+#step_viewer_modal .stp_viewer {
+  height: calc(100vh - 80px);
+}
+
+#step_viewer_modal .stp_viewer .main {
+  height: calc(100% - 46px);
+}
+
+#step_viewer_modal .stp_viewer .main .only_full_width {
+  height: 100%;
+  overflow: hidden;
+}
+
+div.main_right_container #step_viewer_modal .stp_viewer .main_sidebar {
+  height: calc(100% - 10px) !important;
+}
+
+#step_viewer_modal #step_viewer_close {
+  z-index: 100;
+  position: absolute;
+  right: 82px;
+  top: 1px;
+  background-color: red;
+  color: white;
+  border: 0;
+  width: 34px;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+/* Loading Overlay Styling */
+#stp_viewer_loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#stp_viewer_loader .loader_content {
+  text-align: center;
+  background: white;
+  padding: 3rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+#stp_viewer_loader .loader_text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-top: 1rem;
+}
+
+#stp_viewer_loader .loader_subtext {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.5rem;
+}
+
+.stp_viewer div.ov_toolbar div.ov_toolbar_button:nth-child(1) {
+  display: none;
+}
+
+html,
+body {
+  overflow: auto;
+}

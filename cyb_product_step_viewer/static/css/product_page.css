@@ -1,0 +1,35 @@
+#step_viewer_iframe_container.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999999910034;
+    background-color: rgba(0, 0, 0, 1)
+}
+
+#step_viewer_iframe_container .modal-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#step_viewer_iframe_container .close-step-viewer {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 30px;
+    cursor: pointer;
+}
+
+#step_viewer_iframe_container .close-step-viewer i {
+    color: red;
+}

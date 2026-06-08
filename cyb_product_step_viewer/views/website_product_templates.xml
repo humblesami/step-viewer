@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="product_step_viewer_assets" inherit_id="website.layout">
+        <xpath expr="//head" position="inside">
+        </xpath>
+    </template>
+
+    <template id="product_step_files_list" inherit_id="website_sale.product">
+        <xpath expr="//div[@id='o_wsale_product_details_content']/form[1]" position="before">
+            <t t-if="product.step_files">
+                <div class="step_files_container mb-3">
+                    <h6 class="text-muted mb-2">Available 3D Models:</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <t t-foreach="product.step_files" t-as="step_file">
+                            <button type="button" 
+                                    class="btn btn-outline-primary btn-sm step-file-trigger" 
+                                    t-att-data-attachment-id="step_file.id"
+                                    t-att-data-filename="step_file.name">
+                                <i class="fa fa-cube me-1"></i>
+                                <span t-esc="step_file.name"/>
+                            </button>
+                        </t>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+
+        <xpath expr="//t[@t-call='website.layout']" position="inside">
+            <t t-if="product.step_files">
+                <div id="step_viewer_iframe_container" class="modal-overlay">
+                    <link rel="stylesheet" href="/cyb_product_step_viewer/static/css/product_page.css"/>
+                    <div class="modal-container">
+                        <button type="button" class="close-step-viewer">
+                            <i class="fa fa-times-circle"></i>
+                        </button>
+                        <iframe id="step_viewer_iframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+</odoo>

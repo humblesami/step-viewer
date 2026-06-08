@@ -1,0 +1,9 @@
+proxy_mode = True
+limit_memory_hard = 2684354560
+limit_memory_soft = 2147483648
+limit_request = 81113333192
+limit_time_real_cron = -1
+workers = 2
+server_wide_modules = base,web,queue_job
+limit_time_cpu = 6888770
+limit_time_real = 8888120

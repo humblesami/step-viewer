@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="stp_viewer.StpFilePreview">
+        <div class="o_stp_preview_container" t-att-class="state.isMaximized ? 'is-maximized' : ''">
+            
+        </div>
+    </t>
+</templates>
