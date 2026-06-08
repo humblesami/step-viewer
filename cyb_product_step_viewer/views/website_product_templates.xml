@@ -7,19 +7,40 @@
 
     <template id="product_step_files_list" inherit_id="website_sale.product">
         <xpath expr="//div[@id='o_wsale_product_details_content']/form[1]" position="before">
+
             <t t-if="product.step_files">
                 <div class="step_files_container mb-3">
                     <h6 class="text-muted mb-2">Available 3D Models:</h6>
                     <div class="d-flex flex-wrap gap-2">
                         <t t-foreach="product.step_files" t-as="step_file">
-                            <button type="button" 
-                                    class="btn btn-outline-primary btn-sm step-file-trigger" 
+                            <button type="button"
+                                    class="btn btn-outline-primary btn-sm step-file-trigger"
                                     t-att-data-attachment-id="step_file.id"
+                                    t-att-data-product-id="product.id"
                                     t-att-data-filename="step_file.name">
                                 <i class="fa fa-cube me-1"></i>
                                 <span t-esc="step_file.name"/>
                             </button>
                         </t>
+                    </div>
+                </div>
+            </t>
+
+            <t t-set="cart_lines" t-value="request.cart and request.cart.order_line.filtered(lambda l: l.product_id.id == product.id) or False"/>
+            <t t-set="active_line" t-value="cart_lines and cart_lines[0] or False"/>
+            <t t-set="finished_model" t-value="active_line and active_line.finished_client_model or False"/>
+            <t t-if="finished_model">
+                <div class="step_files_container mb-3">
+                    <h6 class="text-muted mb-2">Finished Model:</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button"
+                                class="btn btn-outline-success btn-sm step-file-trigger"
+                                t-att-data-attachment-id="finished_model.id"
+                                t-att-data-product-id="product.id"
+                                t-att-data-filename="finished_model.name">
+                            <i class="fa fa-pencil-square-o me-1"></i>
+                            <span t-esc="finished_model.name"/>
+                        </button>
                     </div>
                 </div>
             </t>

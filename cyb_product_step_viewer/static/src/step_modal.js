@@ -34,8 +34,8 @@ publicWidget.registry.StepViewer = publicWidget.Widget.extend({
         const web_page = '/cyb_step_file_viewer/static/viewer/cad_viewer.html';
         let query_params = `?file_id=${attachmentId}&filename=${$btn.data('filename')}`;
 
-        if ($btn.data('order-line-id')) {
-            query_params += `&order_line_id=${$btn.data('order-line-id')}`;
+        if ($btn.data('product-id')) {
+            query_params += `&product_id=${$btn.data('product-id')}`;
         }
         const tt = Date.now();
         query_params += `&t=${tt}`;

@@ -2,6 +2,13 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
+class SaleOrderLine(models.Model):
+    _inherit = 'sale.order.line'
+
+    finished_client_model = fields.Many2one(
+        'ir.attachment',
+        string='Client Demanded Model Data',
+    )
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'

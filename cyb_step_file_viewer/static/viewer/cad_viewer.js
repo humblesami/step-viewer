@@ -1160,6 +1160,7 @@ export class CadViewer {
 
 (function () {
     document.addEventListener('DOMContentLoaded', () => {
+        console.log(998989, 'cad viewer loaded');
         const root = document.getElementById('cad-viewer-root');
         let attachment_id = findQueryParam('file_id');
         let filename = findQueryParam('filename');
@@ -1179,13 +1180,13 @@ export class CadViewer {
             }
         });
 
-        let order_line_id = findQueryParam('order_line_id');
-        console.log(order_line_id, 'order_line_id');
-        if (order_line_id) {
-            function addSaveModelBtn() {
+        let product_id = findQueryParam('product_id');
+        console.log(product_id, 'product_id');
+        if (product_id) {
+            function addToCartSaveModelBtn() {
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-dark tool-btn tool-btn-save';
-                btn.title = 'Save Model to PO';
+                btn.title = 'Save 3D Model';
                 btn.innerHTML = '<i class="fa fa-save"></i>';
                 document.querySelector('.o_stp_bottom_toolbar .tool-btn-download').after(btn);
 
@@ -1203,16 +1204,20 @@ export class CadViewer {
                         async function saveToOdoo() {
                             console.log('Saving this model to Odoo...');
                             try {
-                                const response = await fetch('/step_file_viewer/save_model', {
+                                let url = '';
+                                let bodyData = { model_data: base64ModelData };
+
+                                if (product_id) {
+                                    url = '/step_file_viewer/save_sale_model';
+                                    bodyData.product_id = product_id;
+                                }
+                                const response = await fetch(url, {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',
                                         'Accept': 'application/json',
                                     },
-                                    body: JSON.stringify({
-                                        order_line_id: order_line_id,
-                                        model_data: base64ModelData
-                                    })
+                                    body: JSON.stringify(bodyData)
                                 });
                                 if (response.ok) {
                                     const responseJSON = await response.json();
@@ -1241,7 +1246,7 @@ export class CadViewer {
                     }, { binary: true, onlyVisible: true });
                 };
             }
-            addSaveModelBtn();
+            addToCartSaveModelBtn();
         }
 
     });
