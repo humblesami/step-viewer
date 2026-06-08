@@ -1,10 +1,39 @@
 # -*- coding: utf-8 -*-
+import base64
 from odoo import http
-from odoo.addons.portal.controllers.portal import CustomerPortal
 from odoo.http import request
+from odoo.addons.portal.controllers.portal import CustomerPortal
 
 
 class VendorPurchasePortal(CustomerPortal):
+
+    @http.route('/step_file_viewer/save_model', type='json', auth="user", methods=['POST'], website=True, csrf=False)
+    def save_model(self):
+        try:
+            data = request.httprequest.json
+            model_data = data.get('model_data')
+            order_line_id = data.get('order_line_id')
+
+            # Create the actual attachment in Odoo
+            attachment = request.env['ir.attachment'].sudo().create({
+                'name': f'Finished_Model_PO_Line_{order_line_id}.glb',
+                'datas': model_data,
+                'res_model': 'purchase.order.line',
+                'res_id': int(order_line_id),
+                'type': 'binary',
+                'mimetype': 'model/gltf-binary',
+                'public': True,
+            })
+
+            # Link it to the purchase order line
+            purchase_order_line = request.env['purchase.order.line'].sudo().browse(int(order_line_id))
+            purchase_order_line.write({
+                'finished_client_model': attachment.id,
+            })
+
+            return {'status': 'success', 'message': 'Model saved successfully'}
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
 
     def _prepare_home_portal_values(self, counters):
         values = super()._prepare_home_portal_values(counters)

@@ -13,6 +13,7 @@
                         <t t-foreach="step_files" t-as="step_file">
                             <button type="button"
                                     class="btn btn-outline-primary btn-sm step-file-trigger"
+                                    t-att-data-order-line-id="line.id"
                                     t-att-data-attachment-id="step_file.id"
                                     t-att-data-filename="step_file.name">
                                 <i class="fa fa-cube me-1"></i>
@@ -22,6 +23,24 @@
                     </div>
                 </div>
             </t>
+            
+            <t t-if="line.finished_client_model">
+                <div class="finished_model_container mt-2 mb-2">
+                    <small class="text-muted mb-1 d-block">Finished 3D Model:</small>
+                    <div class="d-flex flex-wrap gap-1">
+                        <button type="button"
+                                class="btn btn-outline-success btn-sm step-file-trigger"
+                                t-att-data-order-line-id="line.id"
+                                t-att-data-attachment-id="line.finished_client_model.id"
+                                t-att-data-filename="line.finished_client_model.name">
+                            <i class="fa fa-cube me-1"></i>
+                            <span t-esc="line.finished_client_model.name"/>
+                        </button>
+                    </div>
+                </div>
+            </t>
+
+
         </xpath>
 
         <!-- 2. Inject the Modal Container at the very bottom of the portal content -->

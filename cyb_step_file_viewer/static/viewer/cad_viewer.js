@@ -1159,24 +1159,6 @@ export class CadViewer {
 }
 
 (function () {
-    function findQueryParam(param_name, url = '' + window.location) {
-        function searchForParam(split_with) {
-            let qs = url.split(split_with);
-            if (qs.length < 1) return undefined;
-            qs = qs[1];
-            let search_params = new URLSearchParams(qs);
-            if (search_params.has(param_name)) {
-                return { value: search_params.get(param_name) }
-            } else if (split_with == '?' && qs.indexOf('#') > -1) {
-                return searchForParam('#')
-            }
-        }
-        let result = searchForParam('?');
-        if (result) return result.value;
-
-        result = searchForParam('#');
-        return result ? result.value : undefined;
-    }
     document.addEventListener('DOMContentLoaded', () => {
         const root = document.getElementById('cad-viewer-root');
         let attachment_id = findQueryParam('file_id');
@@ -1188,11 +1170,71 @@ export class CadViewer {
                 file_url += `/` + filename;
             }
         }
+
         const viewer = new CadViewer(root, file_url, {
             onClose: () => {
                 window.parent.postMessage('close_step_viewer', '*');
             }
         });
+
+        let order_line_id = findQueryParam('order_line_id');
+        console.log(order_line_id, 'order_line_id');
+        if (order_line_id) {
+            function addSaveModelBtn() {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-dark tool-btn tool-btn-save';
+                btn.title = 'Save Model to PO';
+                btn.innerHTML = '<i class="fa fa-save"></i>';
+                document.querySelector('.o_stp_bottom_toolbar .tool-btn-download').after(btn);
+
+                btn.onclick = () => {
+                    console.log('Generating GLB for save...');
+                    const exporter = new GLTFExporter();
+                    exporter.parse(viewer.originalModel, (result) => {
+                        let binary = '';
+                        let bytes = new Uint8Array(result);
+                        for (let i = 0; i < bytes.byteLength; i++) {
+                            binary += String.fromCharCode(bytes[i]);
+                        }
+                        const base64ModelData = window.btoa(binary);
+
+                        async function saveToOdoo() {
+                            console.log('Saving model to Odoo...');
+                            try {
+                                const response = await fetch('/step_file_viewer/save_model', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                    },
+                                    body: JSON.stringify({
+                                        order_line_id: order_line_id,
+                                        model_data: base64ModelData
+                                    })
+                                });
+                                if (response.ok) {
+                                    const responseJSON = await response.json();
+                                    const responseData = responseJSON.result;
+                                    if (responseData.status === 'success') {
+                                        alert('Model saved successfully! You can close the viewer.');
+                                    } else {
+                                        alert('Error saving model 1: ' + responseData.status + ' - ' + responseData.message);
+                                    }
+                                } else {
+                                    alert('Error saving model 2: ' + response.status + ' - ' + response.statusText);
+                                }
+                            } catch (error) {
+                                alert('Error saving model 3: ' + error);
+                            }
+                        }
+                        saveToOdoo();
+                    }, (error) => {
+                        console.error('Export error:', error);
+                    }, { binary: true, onlyVisible: true });
+                };
+            }
+            addSaveModelBtn();
+        }
+
     });
 })();
-

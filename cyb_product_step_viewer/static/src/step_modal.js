@@ -34,7 +34,11 @@ publicWidget.registry.StepViewer = publicWidget.Widget.extend({
         const $iframe = $('#step_viewer_iframe');
 
         const web_page = '/cyb_step_file_viewer/static/viewer/cad_viewer.html';
-        const query_params = `?file_id=${attachmentId}&filename=${$btn.data('filename')}`;
+        let query_params = `?file_id=${attachmentId}&filename=${$btn.data('filename')}`;
+
+        if ($btn.data('order-line-id')) {
+            query_params += `&order_line_id=${$btn.data('order-line-id')}`;
+        }
 
         let iframeSrc = window.location.origin + web_page + query_params;
         $iframe.attr('src', iframeSrc);
