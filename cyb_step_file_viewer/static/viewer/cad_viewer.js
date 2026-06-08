@@ -266,15 +266,9 @@ export class CadViewer {
                 buffer = buffer.buffer;
             }
 
-            console.time('Parse');
             loader.parse(buffer, '', (gltf) => {
-                console.timeEnd('Parse');
-                console.time('Model Processing');
                 this.originalModel = gltf.scene;
-
-                console.time('Bounding Box Calc');
                 const box = new THREEModules.Box3().setFromObject(this.originalModel);
-                console.timeEnd('Bounding Box Calc');
                 const center = box.getCenter(new THREEModules.Vector3());
 
                 // Center the original model

@@ -52,7 +52,7 @@ publicWidget.registry.StepViewer = publicWidget.Widget.extend({
         $modal.fadeOut(300, () => {
             $iframe.attr('src', ''); // Clear iframe to stop rendering
             $('body').css('overflow', '');
-            $('#product_detail_main').addClass('viewer_active');
+            $('#product_detail_main').removeClass('viewer_active');
             $('#top').removeClass('viewer_active');
         });
     },
