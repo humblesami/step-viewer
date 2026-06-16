@@ -138,26 +138,17 @@ def convert_step_to_glb1(input_path, output_path):
 
 
 
-def convert_step_to_glb(input_path, output_path):
-    def get_all_shapes(shape):
-        parts = []
-        if hasattr(shape, "Solids") and shape.Solids():
-            parts.extend(shape.Solids())
-        # if hasattr(shape, "Shells") and shape.Shells():
-        #     parts.extend(shape.Shells())
-        if not parts and hasattr(shape, "Faces") and shape.Faces():
-            parts.append(shape)
-        return parts
-
-    wp = cq.importers.importStep(input_path)
-    root_shape = wp.val()
-    all_parts = get_all_shapes(root_shape)
+def convert_step_to_glb(step_file_path, output_path):
+    imported_step = cq.importers.importStep(step_file_path)
+    root_shape = imported_step.val()
+    all_parts = []
+    if hasattr(root_shape, "Solids") and root_shape.Solids():
+        all_parts.extend(root_shape.Solids())
+    if not all_parts and hasattr(root_shape, "Faces") and root_shape.Faces():
+        all_parts.append(root_shape)
     print(f"Exporting to {output_path}... with {len(all_parts)}")
-    
     assy = cq.Assembly(name="RootAssembly")
-    
     for i, part in enumerate(all_parts):
-        # We use a higher tolerance for smaller parts to save space
         assy.add(part, name=f"Component_{i+1:03d}")
     assy.save(output_path, "GLTF", tolerance=1.2, angularTolerance=0.8, write_binary=True)
 
