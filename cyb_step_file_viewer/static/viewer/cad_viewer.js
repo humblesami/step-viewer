@@ -413,7 +413,6 @@ export class CadViewer {
     }
 
     getPartsFromModel(model) {
-        const parts = [];
         let root = model;
 
         // Recursively unwrap single-child containers to find the actual assembly level
@@ -421,6 +420,8 @@ export class CadViewer {
             root = root.children[0];
         }
 
+        let all_parts = [];
+        const filtered_parts = [];
         // Optimized single-pass collection of part data
         root.children.forEach((child, index) => {
             let initialColor = "#cccccc";
@@ -448,19 +449,32 @@ export class CadViewer {
             const size = box.getSize(new THREEModules.Vector3());
             const volume = size.x * size.y * size.z;
 
-            parts.push({
+            all_parts.push({
                 id: child.uuid,
                 name: child.name || `Part ${index + 1}`,
-                visible: true,
+                visible: child.visible,
                 color: initialColor,
                 volume: volume
             });
+            if (child.visible && child.isObject3D && volume > 0) {
+                filtered_parts.push({
+                    id: child.uuid,
+                    name: child.name || `Part ${index + 1}`,
+                    visible: true,
+                    color: initialColor,
+                    volume: volume
+                });
+            }
         });
 
-        // Sort parts by volume descending so major parts are on top
-        parts.sort((a, b) => b.volume - a.volume);
+        // Filter out invisible parts
+        console.info("All Parts 4: ", all_parts.length);
+        console.info("Filtered Parts: ", filtered_parts.length);
 
-        return parts;
+        // Sort parts by volume descending so major parts are on top
+        filtered_parts.sort((a, b) => a.name.localeCompare(b.name));
+
+        return filtered_parts;
     }
 
     generateEdges(model) {

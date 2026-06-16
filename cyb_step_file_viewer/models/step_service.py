@@ -7,6 +7,7 @@ import tempfile
 import cadquery as cq
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
+from .step_to_glb_ocp import convert_step_to_glb_with_names
 
 _logger = logging.getLogger(__name__)
 
@@ -139,6 +140,9 @@ def convert_step_to_glb1(input_path, output_path):
 
 
 def convert_step_to_glb(step_file_path, output_path):
+    convert_step_to_glb_with_names(step_file_path, output_path)
+
+def convert_step_to_glb1(step_file_path, output_path):
     imported_step = cq.importers.importStep(step_file_path)
     root_shape = imported_step.val()
     all_parts = []
