@@ -10,6 +10,20 @@ class SaleOrderLine(models.Model):
         string='Client Demanded Model Data',
     )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super(SaleOrderLine, self).create(vals_list)
+        for line in lines:
+            if line.product_id.step_files and not line.finished_client_model:
+                first_model = line.product_id.step_files[0]
+                new_att = first_model.sudo().copy({
+                    'name': f'Finished_Model_{line.id}_{first_model.name}',
+                    'res_model': 'sale.order.line',
+                    'res_id': line.id,
+                })
+                line.finished_client_model = new_att.id
+        return lines
+
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 

@@ -57,4 +57,34 @@
             </t>
         </xpath>
     </template>
+
+    <template id="sale_order_portal_content_inherit_step_viewer" inherit_id="sale.sale_order_portal_content">
+        <xpath expr="//td[@name='td_product_name']" position="inside">
+            <t t-if="line.finished_client_model">
+                <div class="mt-2">
+                    <button type="button"
+                            class="btn btn-primary btn-sm step-file-trigger"
+                            t-att-data-attachment-id="line.finished_client_model.id"
+                            t-att-data-product-id="line.product_id.id"
+                            t-att-data-line-id="line.id"
+                            t-att-data-access-token="sale_order.access_token"
+                            t-att-data-filename="line.finished_client_model.name">
+                        <i class="fa fa-cube me-1"></i>
+                        Finish your model
+                    </button>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="sale_order_portal_template_inherit_step_viewer" inherit_id="sale.sale_order_portal_content">
+        <xpath expr="//td[@name='td_product_name']" position="inside">
+            <div id="step_viewer_iframe_container" class="modal-overlay" style="display:none;">
+                <link rel="stylesheet" href="/cyb_product_step_viewer/static/css/product_page.css"/>
+                <div class="modal-container">
+                    <iframe id="step_viewer_iframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+                </div>
+            </div>
+        </xpath>
+    </template>
 </odoo>

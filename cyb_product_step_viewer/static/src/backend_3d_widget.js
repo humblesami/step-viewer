@@ -29,11 +29,11 @@ export class Many2One3DViewer extends Component {
     static template = xml`
         <div class="d-flex">
             <t t-if="props.record.data[props.name]">
-                <button class="btn btn-link btn-sm" t-on-click="onClick">
-                    <t t-esc="props.record.data[props.name].display_name"/>
+                <button class="btn btn-primary btn-sm" t-on-click="onClick">
+                    Finish your model
                 </button>
             </t>
-            <span t-else="">No 3D File</span>
+            <span t-else=""></span>
         </div>
     `;
 
@@ -47,6 +47,7 @@ export class Many2One3DViewer extends Component {
 
         const filename = this.props.record.data[this.props.name].display_name;
         const productId = this.props.record.data.product_id.id;
+        const lineId = this.props.record.resId;
 
         // Build your URL matching your exact frontend logic
         const web_page = '/cyb_step_file_viewer/static/viewer/cad_viewer.html';
@@ -54,6 +55,9 @@ export class Many2One3DViewer extends Component {
 
         if (productId) {
             query_params += `&product_id=${productId}`;
+        }
+        if (lineId) {
+            query_params += `&line_id=${lineId}`;
         }
         query_params += `&t=${Date.now()}`;
         const iframeSrc = window.location.origin + web_page + query_params;

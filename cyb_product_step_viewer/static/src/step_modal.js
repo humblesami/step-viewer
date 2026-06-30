@@ -2,7 +2,7 @@
 import publicWidget from "@web/legacy/js/public/public_widget";
 
 publicWidget.registry.StepViewer = publicWidget.Widget.extend({
-    selector: '.step_files_container',
+    selector: '.step_files_container, #quote_content, body',
     events: {
         'click .step-file-trigger': '_onStepFileClick',
     },
@@ -26,7 +26,6 @@ publicWidget.registry.StepViewer = publicWidget.Widget.extend({
         ev.preventDefault();
         const $btn = $(ev.currentTarget);
         const attachmentId = $btn.data('attachment-id');
-        console.log(attachmentId, 'attachmentId');
 
         const $modal = $('#step_viewer_iframe_container');
         const $iframe = $('#step_viewer_iframe');
@@ -37,15 +36,22 @@ publicWidget.registry.StepViewer = publicWidget.Widget.extend({
         if ($btn.data('product-id')) {
             query_params += `&product_id=${$btn.data('product-id')}`;
         }
+        if ($btn.data('line-id')) {
+            query_params += `&line_id=${$btn.data('line-id')}`;
+        }
+        if ($btn.data('access-token')) {
+            query_params += `&access_token=${$btn.data('access-token')}`;
+        }
         const tt = Date.now();
         query_params += `&t=${tt}`;
 
         let iframeSrc = window.location.origin + web_page + query_params;
         $iframe.attr('src', iframeSrc);
-        console.log(iframeSrc, 'iframeSrc');
 
-        $('#product_detail_main').addClass('viewer_active');
-        $('#top').addClass('viewer_active');
+        if ($('#product_detail_main').length) {
+            $('#product_detail_main').addClass('viewer_active');
+            $('#top').addClass('viewer_active');
+        }
         $modal.fadeIn(300);
         $('body').css('overflow', 'hidden'); // Prevent background scroll
     },

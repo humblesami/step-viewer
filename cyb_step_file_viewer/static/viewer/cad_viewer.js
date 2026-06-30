@@ -1195,8 +1195,10 @@ export class CadViewer {
         });
 
         let product_id = findQueryParam('product_id');
+        let line_id = findQueryParam('line_id');
+        let access_token = findQueryParam('access_token');
         console.log(product_id, 'product_id');
-        if (product_id) {
+        if (product_id || line_id) {
             function addToCartSaveModelBtn() {
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-dark tool-btn tool-btn-save';
@@ -1218,13 +1220,13 @@ export class CadViewer {
                         async function saveToOdoo() {
                             console.log('Saving this model to Odoo...');
                             try {
-                                let url = '';
+                                let url = '/step_file_viewer/save_sale_model';
                                 let bodyData = { model_data: base64ModelData };
 
-                                if (product_id) {
-                                    url = '/step_file_viewer/save_sale_model';
-                                    bodyData.product_id = product_id;
-                                }
+                                if (product_id) bodyData.product_id = product_id;
+                                if (line_id) bodyData.line_id = line_id;
+                                if (access_token) bodyData.access_token = access_token;
+
                                 const response = await fetch(url, {
                                     method: 'POST',
                                     headers: {
