@@ -78,7 +78,7 @@
     </template>
 
     <template id="sale_order_portal_template_inherit_step_viewer" inherit_id="sale.sale_order_portal_content">
-        <xpath expr="//td[@name='td_product_name']" position="inside">
+        <xpath expr="//div[@id='introduction']" position="inside">
             <div id="step_viewer_iframe_container" class="modal-overlay" style="display:none;">
                 <link rel="stylesheet" href="/cyb_product_step_viewer/static/css/product_page.css"/>
                 <div class="modal-container">

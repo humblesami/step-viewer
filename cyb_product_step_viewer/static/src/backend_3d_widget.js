@@ -29,7 +29,7 @@ export class Many2One3DViewer extends Component {
     static template = xml`
         <div class="d-flex">
             <t t-if="props.record.data[props.name]">
-                <button class="btn btn-primary btn-sm" t-on-click="onClick">
+                <button class="btn btn-primary btn-sm" t-on-click="onFinishModelClick">
                     Finish your model
                 </button>
             </t>
@@ -38,7 +38,7 @@ export class Many2One3DViewer extends Component {
     `;
 
     // Override the native click handler
-    async onClick(ev) {
+    async onFinishModelClick(ev) {
         ev.preventDefault();
         ev.stopPropagation();
 
@@ -61,6 +61,9 @@ export class Many2One3DViewer extends Component {
         }
         query_params += `&t=${Date.now()}`;
         const iframeSrc = window.location.origin + web_page + query_params;
+
+        console.log('attachmentId', attachmentId);
+        console.log('iframeSrc', iframeSrc);
 
         // Open your viewer beautifully within a secure backend dialog container
         this.env.services.dialog.add(CADViewerDialog, {

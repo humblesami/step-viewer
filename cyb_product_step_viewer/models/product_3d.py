@@ -20,6 +20,7 @@ class SaleOrderLine(models.Model):
                     'name': f'Finished_Model_{line.id}_{first_model.name}',
                     'res_model': 'sale.order.line',
                     'res_id': line.id,
+                    'public': True,
                 })
                 line.finished_client_model = new_att.id
         return lines
