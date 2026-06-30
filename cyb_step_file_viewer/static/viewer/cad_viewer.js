@@ -103,6 +103,8 @@ export class CadViewer {
             showSidebar: false,
             showLightsPopup: false,
             showEdgePopup: false,
+            searchQuery: '',
+            invertSearch: false,
         };
 
         this.needsRender = true;
@@ -917,6 +919,65 @@ export class CadViewer {
         }
     }
 
+    providePartsSearch(query, invert = null) {
+        if (query !== null) {
+            this.state.searchQuery = query;
+        } else {
+            query = this.state.searchQuery;
+        }
+        if (invert !== null) {
+            this.state.invertSearch = invert;
+        } else {
+            invert = this.state.invertSearch;
+        }
+
+        const popup = this.container.querySelector('.o_stp_parts_popup');
+        if (!popup) return;
+
+        const terms = query.toLowerCase().split(/\s+/).filter(t => t);
+        let matchCount = 0;
+
+        this.state.parts.forEach((part) => {
+            const partEl = popup.querySelector(`.part-item-modern[data-part-id="${part.id}"]`);
+            if (!partEl) return;
+
+            let matches = true;
+            if (terms.length > 0) {
+                const partNameLower = part.name.toLowerCase();
+                for (const term of terms) {
+                    if (term.startsWith('-')) {
+                        const excludeTerm = term.slice(1);
+                        if (excludeTerm && partNameLower.includes(excludeTerm)) {
+                            matches = false;
+                            break;
+                        }
+                    } else {
+                        if (!partNameLower.includes(term)) {
+                            matches = false;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (invert) {
+                matches = !matches;
+            }
+
+            if (matches) {
+                partEl.style.display = '';
+                matchCount++;
+            } else {
+                partEl.style.display = 'none';
+            }
+        });
+
+        const countEl = popup.querySelector('.matching-parts-count');
+        if (countEl) {
+            countEl.innerText = `${matchCount} of ${this.state.parts.length} parts matched`;
+        }
+    }
+
     // UI Rendering & Updates
     renderUI() {
         // Initial static structure
@@ -1027,6 +1088,35 @@ export class CadViewer {
         let popoversHtml = '';
 
         if (this.state.showSidebar) {
+            let matchingCount = this.state.parts.length;
+            if (this.state.searchQuery || this.state.invertSearch) {
+                const terms = this.state.searchQuery.toLowerCase().split(/\s+/).filter(t => t);
+                matchingCount = this.state.parts.filter(part => {
+                    const partNameLower = part.name.toLowerCase();
+                    let matches = true;
+                    if (terms.length > 0) {
+                        for (const term of terms) {
+                            if (term.startsWith('-')) {
+                                const excludeTerm = term.slice(1);
+                                if (excludeTerm && partNameLower.includes(excludeTerm)) {
+                                    matches = false;
+                                    break;
+                                }
+                            } else {
+                                if (!partNameLower.includes(term)) {
+                                    matches = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (this.state.invertSearch) {
+                        matches = !matches;
+                    }
+                    return matches;
+                }).length;
+            }
+
             popoversHtml += `
                 <div class="popover o_stp_parts_popup">
                     <div class="sidebar-header">
@@ -1034,6 +1124,18 @@ export class CadViewer {
                         <button class="btn-close-sidebar"><i class="fa fa-times"></i></button>
                     </div>
                     <div class="sidebar-action-box">
+                        <div class="part-search-box" style="margin-bottom: 12px; padding: 0 8px;">
+                            <div style="display: flex; align-items: center; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px 10px; transition: border-color 0.2s;">
+                                <i class="fa fa-search" style="opacity: 0.6; margin-right: 8px; color: #fff;"></i>
+                                <input type="text" class="form-control part-search-input" placeholder="Search parts (e.g. bolt -bracket)..." value="${this.state.searchQuery || ''}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; box-shadow: none;">
+                                <div style="display: flex; align-items: center; justify-content: center; margin-left: 8px; border-left: 1px solid rgba(255, 255, 255, 0.1); padding-left: 8px;" title="Invert Results">
+                                    <input class="part-search-invert" type="checkbox" ${this.state.invertSearch ? 'checked' : ''} style="cursor: pointer; margin: 0; width: 14px; height: 14px;">
+                                </div>
+                            </div>
+                            <div class="matching-parts-count" style="font-size: 11px; opacity: 0.7; padding-left: 2px; margin-top: 4px; color: rgba(255, 255, 255, 0.7);">
+                                ${matchingCount} of ${this.state.parts.length} parts matched
+                            </div>
+                        </div>
                         <div class="part-item-modern global-paint-row">
                             <span class="part-name-text">Paint All</span>
                             <div class="part-actions">
@@ -1047,17 +1149,43 @@ export class CadViewer {
                         </div>
                     </div>
                     <div class="sidebar-content">
-                        ${this.state.parts.map(part => `
-                            <div class="part-item-modern">
-                                <span class="part-name-text" title="Volume: ${Math.round(part.volume)}">${part.name}</span>
-                                <div class="part-actions">
-                                    <input type="color" value="${part.color}" data-part-id="${part.id}" class="mini-color-picker part-color-picker">
-                                    <button class="btn-vis ${part.visible ? 'active' : ''}" data-part-id="${part.id}">
-                                        <i class="fa ${part.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
-                                    </button>
+                        ${this.state.parts.map(part => {
+                            let matches = true;
+                            if (this.state.searchQuery || this.state.invertSearch) {
+                                const terms = this.state.searchQuery.toLowerCase().split(/\s+/).filter(t => t);
+                                const partNameLower = part.name.toLowerCase();
+                                if (terms.length > 0) {
+                                    for (const term of terms) {
+                                        if (term.startsWith('-')) {
+                                            const excludeTerm = term.slice(1);
+                                            if (excludeTerm && partNameLower.includes(excludeTerm)) {
+                                                matches = false;
+                                                break;
+                                            }
+                                        } else {
+                                            if (!partNameLower.includes(term)) {
+                                                matches = false;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (this.state.invertSearch) {
+                                    matches = !matches;
+                                }
+                            }
+                            return `
+                                <div class="part-item-modern" data-part-id="${part.id}" style="${matches ? '' : 'display: none;'}">
+                                    <span class="part-name-text" title="Volume: ${Math.round(part.volume)}">${part.name}</span>
+                                    <div class="part-actions">
+                                        <input type="color" value="${part.color}" data-part-id="${part.id}" class="mini-color-picker part-color-picker">
+                                        <button class="btn-vis ${part.visible ? 'active' : ''}" data-part-id="${part.id}">
+                                            <i class="fa ${part.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `;
@@ -1111,6 +1239,35 @@ export class CadViewer {
         if (this.state.showSidebar) {
             popoversContainer.querySelector('.btn-close-sidebar').onclick = () => this.toggleSidebar();
             popoversContainer.querySelector('.global-paint-picker').oninput = (e) => this.onGlobalColorChange(e);
+
+            const searchInput = popoversContainer.querySelector('.part-search-input');
+            if (searchInput) {
+                const searchWrapper = searchInput.closest('div');
+                searchInput.onfocus = () => {
+                    if (searchWrapper) {
+                        searchWrapper.style.borderColor = '#00a09d';
+                        searchWrapper.style.boxShadow = '0 0 5px rgba(0, 160, 157, 0.5)';
+                    }
+                };
+                searchInput.onblur = () => {
+                    if (searchWrapper) {
+                        searchWrapper.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                        searchWrapper.style.boxShadow = 'none';
+                    }
+                };
+                const handleSearch = (e) => {
+                    this.providePartsSearch(e.target.value, null);
+                };
+                searchInput.oninput = handleSearch;
+                searchInput.onkeyup = handleSearch;
+            }
+            
+            const invertCheckbox = popoversContainer.querySelector('.part-search-invert');
+            if (invertCheckbox) {
+                invertCheckbox.onchange = (e) => {
+                    this.providePartsSearch(null, e.target.checked);
+                };
+            }
 
             const globalBtn = popoversContainer.querySelector('.global-toggle-btn');
             this.updateGlobalToggleUI(globalBtn, this.globalVisibilityState);
