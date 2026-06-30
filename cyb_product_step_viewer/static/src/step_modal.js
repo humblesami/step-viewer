@@ -5,6 +5,7 @@ publicWidget.registry.StepViewer = publicWidget.Widget.extend({
     selector: '.step_files_container, #quote_content, body',
     events: {
         'click .step-file-trigger': '_onStepFileClick',
+        'click .restore-model-trigger': '_onRestoreModelClick',
     },
 
     init: function () {
@@ -55,6 +56,38 @@ publicWidget.registry.StepViewer = publicWidget.Widget.extend({
         $modal.fadeIn(300);
         $('body').css('overflow', 'hidden'); // Prevent background scroll
     },
+
+    _onRestoreModelClick: async function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const $btn = $(ev.currentTarget);
+        const lineId = $btn.data('line-id');
+        const accessToken = $btn.data('access-token');
+
+        if (!confirm('Are you sure you want to restore the original model? All your unsaved modifications will be lost.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/step_file_viewer/restore_original_model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ line_id: lineId, access_token: accessToken })
+            });
+            const result = await response.json();
+
+            if (result.result && result.result.status === 'success') {
+                window.location.reload(); // Reload portal page to reflect changes
+            } else {
+                alert(result.result ? result.result.message : 'Error restoring model');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to restore model');
+        }
+    },
+
 
     _closeViewer: function () {
         const $modal = $('#step_viewer_iframe_container');

@@ -70,7 +70,14 @@
                             t-att-data-access-token="sale_order.access_token"
                             t-att-data-filename="line.finished_client_model.name">
                         <i class="fa fa-cube me-1"></i>
-                        Finish your model
+                        Finish model
+                    </button>
+                    <button t-if="line.is_model_modified"
+                            type="button"
+                            class="btn btn-outline-warning btn-sm restore-model-trigger"
+                            t-att-data-line-id="line.id"
+                            t-att-data-access-token="sale_order.access_token">
+                        <i class="fa fa-undo me-1"></i> Restore
                     </button>
                 </div>
             </t>

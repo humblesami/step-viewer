@@ -4,6 +4,37 @@ from odoo.http import request
 
 class ProductStepViewerController(http.Controller):
 
+    @http.route('/step_file_viewer/restore_original_model', type='json', auth="public", methods=['POST'], website=True, csrf=False)
+    def restore_original_model(self):
+        try:
+            data = request.httprequest.json
+            line_id = data.get('line_id')
+            access_token = data.get('access_token')
+
+            if not line_id:
+                return {'status': 'error', 'message': 'Missing line id'}
+
+            sale_order_line = request.env['sale.order.line'].sudo().browse(int(line_id))
+            if not sale_order_line.exists():
+                return {'status': 'error', 'message': 'Invalid line id'}
+
+            if not request.env.user.has_group('base.group_user') and access_token:
+                if sale_order_line.order_id.access_token != access_token:
+                     return {'status': 'error', 'message': 'Invalid access token'}
+
+            if sale_order_line.product_id.step_files and sale_order_line.finished_client_model:
+                original = sale_order_line.product_id.step_files[0]
+                sale_order_line.finished_client_model.sudo().write({
+                    'datas': original.datas,
+                    'name': f'Finished_Model_{sale_order_line.id}_{original.name}',
+                })
+                return {'status': 'success'}
+                
+            return {'status': 'error', 'message': 'No original model found'}
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
+
+
     @http.route('/step_file_viewer/save_sale_model', type='json', auth="public", methods=['POST'], website=True, csrf=False)
     def save_sale_model(self):
         try:

@@ -10,6 +10,29 @@ class SaleOrderLine(models.Model):
         string='Client Demanded Model Data',
     )
 
+    is_model_modified = fields.Boolean(
+        string="Is Model Modified",
+        compute="_compute_is_model_modified",
+        store=False,
+    )
+    @api.depends('finished_client_model.checksum', 'product_id.step_files')
+    def _compute_is_model_modified(self):
+        for line in self:
+            if line.finished_client_model and line.product_id.step_files:
+                original = line.product_id.step_files[0]
+                line.is_model_modified = (line.finished_client_model.checksum != original.checksum)
+            else:
+                line.is_model_modified = False
+
+    def action_restore_original_model(self):
+        for line in self:
+            if line.product_id.step_files and line.finished_client_model:
+                original = line.product_id.step_files[0]
+                line.finished_client_model.sudo().write({
+                    'datas': original.datas,
+                    'name': f'Finished_Model_{line.id}_{original.name}',
+                })
+
     @api.model_create_multi
     def create(self, vals_list):
         lines = super(SaleOrderLine, self).create(vals_list)

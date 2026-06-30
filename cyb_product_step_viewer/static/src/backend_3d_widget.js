@@ -30,7 +30,7 @@ export class Many2One3DViewer extends Component {
         <div class="d-flex">
             <t t-if="props.record.data[props.name]">
                 <button class="btn btn-primary btn-sm" t-on-click="onFinishModelClick">
-                    Finish your model
+                    Finish model
                 </button>
             </t>
             <span t-else=""></span>
@@ -70,6 +70,37 @@ export class Many2One3DViewer extends Component {
             title: `3D Model Preview - ${filename}`,
             src: iframeSrc,
         });
+    }
+
+    async onRestoreModelClick(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const $btn = $(ev.currentTarget);
+        const lineId = $btn.data('line-id');
+        const accessToken = $btn.data('access-token');
+
+        if (!confirm('Are you sure you want to restore the original model? All your unsaved modifications will be lost.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/step_file_viewer/restore_original_model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ line_id: lineId, access_token: accessToken })
+            });
+            const result = await response.json();
+
+            if (result.result && result.result.status === 'success') {
+                window.location.reload(); // Reload portal page to reflect changes
+            } else {
+                alert(result.result ? result.result.message : 'Error restoring model');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to restore model');
+        }
     }
 }
 
