@@ -4,7 +4,7 @@ from odoo.http import request
 
 class ProductStepViewerController(http.Controller):
 
-    @http.route('/step_file_viewer/restore_original_model', type='json', auth="public", methods=['POST'], website=True, csrf=False)
+    @http.route('/step_file_viewer/restore_original_model', type='jsonrpc', auth="public", methods=['POST'], website=True, csrf=False)
     def restore_original_model(self):
         try:
             data = request.httprequest.json
@@ -35,7 +35,7 @@ class ProductStepViewerController(http.Controller):
             return {'status': 'error', 'message': str(e)}
 
 
-    @http.route('/step_file_viewer/save_sale_model', type='json', auth="public", methods=['POST'], website=True, csrf=False)
+    @http.route('/step_file_viewer/save_sale_model', type='jsonrpc', auth="public", methods=['POST'], website=True, csrf=False)
     def save_sale_model(self):
         try:
             data = request.httprequest.json

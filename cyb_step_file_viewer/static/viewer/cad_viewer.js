@@ -421,14 +421,14 @@ export class CadViewer {
         }
 
         const all_parts = [];
-        
+
         const traverse = (node, level, parentId) => {
-            if (node.isMesh || node.isLineSegments) return; 
+            if (node.isMesh || node.isLineSegments) return;
 
             // Only treat nodes created by our Python script as actual structural nodes.
             const isStructural = node.name && node.name !== 'Scene' && node.name !== 'RootAssembly';
             const validChildren = node.children.filter(c => !c.isMesh && !c.isLineSegments);
-            
+
             let currentLevel = level;
             let currentId = parentId;
 
@@ -446,9 +446,9 @@ export class CadViewer {
                 const box = new THREEModules.Box3().setFromObject(node);
                 const size = box.getSize(new THREEModules.Vector3());
                 const volume = size.x * size.y * size.z;
-                
+
                 currentId = node.uuid;
-                
+
                 all_parts.push({
                     id: currentId,
                     name: node.name,
@@ -457,18 +457,18 @@ export class CadViewer {
                     volume: volume,
                     level: currentLevel,
                     parentId: parentId,
-                    expanded: true,
+                    expanded: false,
                     childrenIds: [] // Populated below
                 });
-                
+
                 currentLevel++; // Indent children
             }
-            
+
             validChildren.forEach(c => traverse(c, currentLevel, currentId));
         };
 
         traverse(root, 0, null);
-        
+
         all_parts.forEach(part => {
             part.childrenIds = all_parts.filter(p => p.parentId === part.id).map(p => p.id);
             part.isAssembly = part.childrenIds.length > 0;
@@ -481,7 +481,7 @@ export class CadViewer {
         const descendants = [];
         const part = this.state.parts.find(p => p.id === partId);
         if (!part) return descendants;
-        
+
         const traverse = (p) => {
             p.childrenIds.forEach(childId => {
                 descendants.push(childId);
@@ -738,7 +738,7 @@ export class CadViewer {
                 idsToColor.forEach(id => {
                     const p = this.state.parts.find(x => x.id === id);
                     if (p) p.color = color;
-                    
+
                     const obj = this.originalModel.getObjectByProperty('uuid', id);
                     if (obj) {
                         obj.traverse((node) => {
@@ -750,7 +750,7 @@ export class CadViewer {
                             }
                         });
                     }
-                    
+
                     const picker = this.container.querySelector(`.part-color-picker[data-part-id="${id}"]`);
                     if (picker) picker.value = color;
                 });
@@ -769,14 +769,14 @@ export class CadViewer {
         if (part) {
             const targetVisible = !part.visible;
             const idsToToggle = [partId, ...this.getDescendantIds(partId)];
-            
+
             idsToToggle.forEach(id => {
                 const p = this.state.parts.find(x => x.id === id);
                 if (p) {
                     p.visible = targetVisible;
                     const obj = this.originalModel.getObjectByProperty('uuid', id);
                     if (obj) obj.visible = targetVisible;
-                    
+
                     const dBtn = this.container.querySelector(`.btn-vis[data-part-id="${id}"]`);
                     if (dBtn) {
                         dBtn.className = `btn-vis ${targetVisible ? 'active' : ''}`;
@@ -795,7 +795,7 @@ export class CadViewer {
     toggleAllVisibility() {
         const matchedParts = this.getMatchedParts();
         if (matchedParts.length === 0) return;
-        
+
         const current = this.globalVisibilityState;
         const targetVisible = (current === 'none') ? true : false;
 
@@ -825,7 +825,7 @@ export class CadViewer {
     get globalVisibilityState() {
         const matchedParts = this.getMatchedParts();
         if (matchedParts.length === 0) return 'none';
-        
+
         const visibleCount = matchedParts.filter(p => p.visible).length;
         if (visibleCount === 0) return 'none';
         if (visibleCount === matchedParts.length) return 'all';
@@ -836,7 +836,7 @@ export class CadViewer {
         const matchedCount = this.getMatchedParts().length;
         const totalCount = this.state.parts.length;
         const noun = matchedCount < totalCount ? `${matchedCount} MATCHED` : 'ALL';
-        
+
         const icon = btn.querySelector('i');
         const text = btn.querySelector('.btn-text');
         if (state === 'all') {
@@ -966,10 +966,10 @@ export class CadViewer {
         if (!this.state.searchQuery && !this.state.invertSearch) {
             return this.state.parts;
         }
-        
+
         const terms = (this.state.searchQuery || '').toLowerCase().split(/\s+/).filter(t => t);
         const directMatches = new Set();
-        
+
         this.state.parts.forEach(part => {
             const partNameLower = part.name.toLowerCase();
             let matches = true;
@@ -994,7 +994,7 @@ export class CadViewer {
         });
 
         const finalMatches = new Set();
-        
+
         const addAncestors = (partId) => {
             const part = this.state.parts.find(p => p.id === partId);
             if (part && part.parentId) {
@@ -1183,6 +1183,7 @@ export class CadViewer {
             const matchingCount = matchedParts.length;
             const noun = matchingCount < this.state.parts.length ? `${matchingCount} Matched` : 'All';
 
+            console.log('this.state.parts', this.state.parts);
             popoversHtml += `
                 <div class="popover o_stp_parts_popup">
                     <div class="sidebar-header">
@@ -1204,10 +1205,10 @@ export class CadViewer {
                             </div>
                         </div>
                         <div class="part-item-modern global-paint-row">
-                            <span class="part-name-text">Paint ${noun}</span>
-                            <div class="part-actions">
+                            <div class="part-actions" style="margin-right: 5px;">
                                 <input type="color" class="mini-color-picker global-paint-picker" value="#ffffff">
                             </div>
+                            <span class="part-name-text">Paint ${noun}</span>
                         </div>
                         <div class="d-flex gap-2 mb-3">
                             <button class="btn drawer-action-btn flex-grow-1 global-toggle-btn">
@@ -1217,37 +1218,37 @@ export class CadViewer {
                     </div>
                     <div class="sidebar-content">
                         ${this.state.parts.map(part => {
-                            const matches = matchedIds.has(part.id);
-                            let isCollapsedByParent = false;
-                            let currParent = this.state.parts.find(p => p.id === part.parentId);
-                            while (currParent) {
-                                if (!currParent.expanded) {
-                                    isCollapsedByParent = true;
-                                    break;
-                                }
-                                currParent = this.state.parts.find(p => p.id === currParent.parentId);
-                            }
-                            
-                            const displayStyle = (matches && !isCollapsedByParent) ? '' : 'display: none;';
-                            const expanderHtml = part.isAssembly 
-                                ? `<i class="fa ${part.expanded ? 'fa-caret-down' : 'fa-caret-right'} tree-expander" data-part-id="${part.id}" style="cursor: pointer; width: 16px; text-align: center; margin-right: 4px;"></i>`
-                                : `<span style="width: 20px; display: inline-block;"></span>`;
+                const matches = matchedIds.has(part.id);
+                let isCollapsedByParent = false;
+                let currParent = this.state.parts.find(p => p.id === part.parentId);
+                while (currParent) {
+                    if (!currParent.expanded) {
+                        isCollapsedByParent = true;
+                        break;
+                    }
+                    currParent = this.state.parts.find(p => p.id === currParent.parentId);
+                }
 
-                            const nameStyle = part.isAssembly ? 'font-weight: 600;' : '';
+                const displayStyle = (matches && !isCollapsedByParent) ? '' : 'display: none;';
+                const expanderHtml = part.isAssembly
+                    ? `<i class="fa ${part.expanded ? 'fa-caret-down' : 'fa-caret-right'} tree-expander" data-part-id="${part.id}" style="cursor: pointer; text-align: center; margin: 0 4px; color: aliceblue; font-size: 20px; padding: 5px;"></i>`
+                    : `<span style="width: 5px; display: inline-block;"></span>`;
 
-                            return `
-                                <div class="part-item-modern" data-part-id="${part.id}" style="${displayStyle} padding-left: ${part.level * 16 + 8}px;">
-                                    ${expanderHtml}
-                                    <span class="part-name-text" style="${nameStyle}" title="Volume: ${Math.round(part.volume)}">${part.name}</span>
-                                    <div class="part-actions">
-                                        <input type="color" value="${part.color}" data-part-id="${part.id}" class="mini-color-picker part-color-picker">
-                                        <button class="btn-vis ${part.visible ? 'active' : ''}" data-part-id="${part.id}">
-                                            <i class="fa ${part.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('')}
+                const nameStyle = part.isAssembly ? 'font-weight: 600;' : '';
+
+                return `
+                    <div class="part-item-modern" data-part-id="${part.id}" style="${displayStyle} padding-left: ${part.level * 16 + 8}px;">
+                        <div class="part-actions">
+                            <input type="color" value="${part.color}" data-part-id="${part.id}" class="mini-color-picker part-color-picker">
+                            <button class="btn-vis ${part.visible ? 'active' : ''}" data-part-id="${part.id}">
+                                <i class="fa ${part.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                            </button>
+                        </div>    
+                        ${expanderHtml}
+                        <span class="part-name-text" style="${nameStyle}" title="Volume: ${Math.round(part.volume)}">${part.name}</span>
+                    </div>
+                `;
+            }).join('')}
                     </div>
                 </div>
             `;
@@ -1323,7 +1324,7 @@ export class CadViewer {
                 searchInput.oninput = handleSearch;
                 searchInput.onkeyup = handleSearch;
             }
-            
+
             const clearBtn = popoversContainer.querySelector('.clear-search-btn');
             if (clearBtn) {
                 clearBtn.onclick = () => {
@@ -1333,7 +1334,7 @@ export class CadViewer {
                     }
                 };
             }
-            
+
             const invertCheckbox = popoversContainer.querySelector('.part-search-invert');
             if (invertCheckbox) {
                 invertCheckbox.onchange = (e) => {
@@ -1354,7 +1355,7 @@ export class CadViewer {
             popoversContainer.querySelectorAll('.btn-vis').forEach(el => {
                 el.onclick = (e) => this.toggleVisibility(e, e.currentTarget.dataset.partId);
             });
-            
+
             popoversContainer.querySelectorAll('.tree-expander').forEach(exp => {
                 exp.onclick = (e) => {
                     const partId = e.currentTarget.dataset.partId;
@@ -1439,7 +1440,6 @@ export class CadViewer {
         let line_id = findQueryParam('line_id');
         let access_token = findQueryParam('access_token');
         let hide_save = findQueryParam('hide_save');
-        console.log(product_id, 'product_id');
         if ((product_id || line_id) && !hide_save) {
             function addToCartSaveModelBtn() {
                 const btn = document.createElement('button');

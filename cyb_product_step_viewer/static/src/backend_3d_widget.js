@@ -14,8 +14,14 @@ class CADViewerDialog extends Component {
                     margin:0;
                     max-width: 100vw;
                 }
+                .modal-dialog footer.modal-footer{
+                    padding: 5px;
+                }
+                .modal-dialog .modal-content {
+                    height: 100vh;
+                }
             </style>
-            <div style="height: 100vh; width: 100%;">
+            <div style="height: calc(100vh - 120px); width: 100%;">
                 <iframe t-att-src="props.src" style="width: 100%; height: 100%; border: none;"/>
             </div>
         </Dialog>
@@ -51,7 +57,7 @@ export class Many2One3DViewer extends Component {
         if (!attachmentId) return;
 
         const filename = this.props.record.data[this.props.name].display_name || this.props.record.data[this.props.name][1];
-        
+
         let productId = null;
         if (this.props.record.data.product_id) {
             productId = this.props.record.data.product_id.id || this.props.record.data.product_id[0];

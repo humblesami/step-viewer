@@ -387,17 +387,6 @@
     padding: 5px 0;
 }
 
-.o_stp_preview_container .part-item-modern {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 5px 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    margin-bottom: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
 .o_stp_preview_container .part-actions {
     display: flex;
     align-items: center;
@@ -423,7 +412,3 @@
     color: #000;
 }
 
-.o_stp_preview_container .part-item-modern:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.15);
-}
