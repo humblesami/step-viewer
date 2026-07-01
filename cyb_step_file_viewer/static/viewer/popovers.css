@@ -7,7 +7,7 @@
     background: rgba(0, 0, 0, 0.8);
     border-radius: 20px;
     padding: 5px;
-    max-height: calc(100vh - 80px);
+    max-height: calc(100vh - 85px);
     overflow: auto;
 }
 
@@ -26,6 +26,10 @@
     width: 300px;
     display: flex;
     flex-direction: column;
+    resize: horizontal;
+    overflow: hidden;
+    min-width: 300px;
+    max-width: 800px;
 }
 
 .popup-section input[type="range"] {

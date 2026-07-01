@@ -241,15 +241,15 @@
 
 .o_stp_bottom_toolbar {
     position: absolute;
-    bottom: 15px;
+    bottom: 5px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     align-items: center;
     gap: 12px;
-    background-color: rgb(22 21 21);
+    background-color: #161515;
     backdrop-filter: blur(12px);
-    padding: 10px;
+    padding: 5px 10px;
     border-radius: 20px;
     z-index: 1001;
 }
@@ -411,4 +411,3 @@
     background: #ffcc00;
     color: #000;
 }
-

@@ -963,58 +963,28 @@ export class CadViewer {
     }
 
     getMatchedParts() {
-        if (!this.state.searchQuery && !this.state.invertSearch) {
+        if (!this.state.searchQuery) {
             return this.state.parts;
         }
 
-        const terms = (this.state.searchQuery || '').toLowerCase().split(/\s+/).filter(t => t);
+        const terms = (this.state.searchQuery || '').toLowerCase().split('+').filter(t => t);
         const directMatches = new Set();
 
         this.state.parts.forEach(part => {
             const partNameLower = part.name.toLowerCase();
-            let matches = true;
+            let matches = false;
             if (terms.length > 0) {
                 for (const term of terms) {
-                    if (term.startsWith('-')) {
-                        const excludeTerm = term.slice(1);
-                        if (excludeTerm && partNameLower.includes(excludeTerm)) {
-                            matches = false;
-                            break;
-                        }
-                    } else {
-                        if (!partNameLower.includes(term)) {
-                            matches = false;
-                            break;
-                        }
+                    if (partNameLower.includes(term)) {
+                        matches = true;
+                        break;
                     }
                 }
             }
-            if (this.state.invertSearch) matches = !matches;
             if (matches) directMatches.add(part.id);
         });
 
-        const finalMatches = new Set();
-
-        const addAncestors = (partId) => {
-            const part = this.state.parts.find(p => p.id === partId);
-            if (part && part.parentId) {
-                finalMatches.add(part.parentId);
-                addAncestors(part.parentId);
-            }
-        };
-
-        const addDescendants = (partId) => {
-            const descendants = this.getDescendantIds(partId);
-            descendants.forEach(dId => finalMatches.add(dId));
-        };
-
-        directMatches.forEach(id => {
-            finalMatches.add(id);
-            addAncestors(id);
-            addDescendants(id);
-        });
-
-        return this.state.parts.filter(p => finalMatches.has(p.id));
+        return this.state.parts.filter(p => this.state.invertSearch ? !directMatches.has(p.id) : directMatches.has(p.id));
     }
 
     updatePaintGlobalUI() {
@@ -1176,14 +1146,11 @@ export class CadViewer {
 
         // Popovers
         let popoversHtml = '';
-
         if (this.state.showSidebar) {
             const matchedParts = this.getMatchedParts();
             const matchedIds = new Set(matchedParts.map(p => p.id));
             const matchingCount = matchedParts.length;
             const noun = matchingCount < this.state.parts.length ? `${matchingCount} Matched` : 'All';
-
-            console.log('this.state.parts', this.state.parts);
             popoversHtml += `
                 <div class="popover o_stp_parts_popup">
                     <div class="sidebar-header">
@@ -1194,10 +1161,10 @@ export class CadViewer {
                         <div class="part-search-box" style="margin-bottom: 12px; padding: 0 8px;">
                             <div style="display: flex; align-items: center; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px 10px; transition: border-color 0.2s; position: relative;">
                                 <i class="fa fa-search" style="opacity: 0.6; margin-right: 8px; color: #fff;"></i>
-                                <input type="text" class="form-control part-search-input" placeholder="Search parts (e.g. bolt -bracket)..." value="${this.state.searchQuery || ''}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; padding-right: 20px; box-shadow: none;">
-                                <i class="fa fa-times-circle clear-search-btn" style="position: absolute; right: 40px; cursor: pointer; color: white; opacity: ${this.state.searchQuery ? '0.6' : '0'}; transition: opacity 0.2s; pointer-events: ${this.state.searchQuery ? 'auto' : 'none'};"></i>
+                                <input type="text" class="form-control part-search-input" placeholder="Search parts (e.g. bolt -bracket)..." value="${this.state.searchQuery || ''}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; padding-right: 10px; box-shadow: none;">
                                 <div style="display: flex; align-items: center; justify-content: center; margin-left: 8px; border-left: 1px solid rgba(255, 255, 255, 0.1); padding-left: 8px;" title="Invert Results">
-                                    <input class="part-search-invert" type="checkbox" ${this.state.invertSearch ? 'checked' : ''} style="cursor: pointer; margin: 0; width: 14px; height: 14px;">
+                                    <input class="part-search-invert" type="checkbox" ${!this.state.invertSearch ? 'checked' : ''} style="cursor: pointer; margin: 0; margin-right: 4px; width: 14px; height: 14px;">
+                                    <span id="search_mode" style="font-size: 12px; margin-left: 4px; color: white;">${!this.state.invertSearch ? 'Including' : 'Excluding'}</span>
                                 </div>
                             </div>
                             <div class="matching-parts-count" style="font-size: 11px; opacity: 0.7; padding-left: 2px; margin-top: 4px; color: rgba(255, 255, 255, 0.7);">
@@ -1236,6 +1203,15 @@ export class CadViewer {
 
                 const nameStyle = part.isAssembly ? 'font-weight: 600;' : '';
 
+                let utf8Name = part.name;
+                try {
+                    // OCP/GLTF sometimes parses non-English characters as raw bytes (Latin-1).
+                    // This securely decodes those bytes back into proper UTF-8 strings.
+                    utf8Name = decodeURIComponent(escape(part.name));
+                } catch (e) {
+                    // Use original if decoding fails
+                }
+
                 return `
                     <div class="part-item-modern" data-part-id="${part.id}" style="${displayStyle} padding-left: ${part.level * 16 + 8}px;">
                         <div class="part-actions">
@@ -1245,7 +1221,7 @@ export class CadViewer {
                             </button>
                         </div>    
                         ${expanderHtml}
-                        <span class="part-name-text" style="${nameStyle}" title="Volume: ${Math.round(part.volume)}">${part.name}</span>
+                        <span class="part-name-text" style="${nameStyle}" title="Volume: ${Math.round(part.volume)}">${utf8Name}</span>
                     </div>
                 `;
             }).join('')}
@@ -1337,11 +1313,19 @@ export class CadViewer {
 
             const invertCheckbox = popoversContainer.querySelector('.part-search-invert');
             if (invertCheckbox) {
-                invertCheckbox.onchange = (e) => {
-                    this.providePartsSearch(null, e.target.checked);
+                let self = this;
+                console.log('invertCheckbox', invertCheckbox);
+                invertCheckbox.onclick = (ev) => {
+                    let inverted = false;
+                    if (!ev.target.checked) {
+                        inverted = true;
+                    }
+                    console.log('inverted', inverted);
+                    self.state.invertSearch = inverted;
+                    document.getElementById('search_mode').textContent = !self.state.invertSearch ? 'Including' : 'Excluding';
+                    self.providePartsSearch(searchInput.value, inverted);
                 };
             }
-
             const globalBtn = popoversContainer.querySelector('.global-toggle-btn');
             this.updateGlobalToggleUI(globalBtn, this.globalVisibilityState);
             globalBtn.onclick = () => this.toggleAllVisibility();
