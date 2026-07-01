@@ -168,3 +168,51 @@
     align-items: center;
     gap: 8px;
 }
+
+.o_stp_preview_container .part-search-input-container {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 6px 10px;
+    transition: border-color 0.2s;
+    position: relative;
+}
+
+.o_stp_preview_container .part-search-input-container:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.o_stp_preview_container .matching-parts-count {
+    font-size: 12px;
+    padding-left: 2px;
+    margin-top: 4px;
+    color: white;
+}
+
+.o_stp_preview_container .int_ext_met .btn {
+    cursor: pointer;
+    font-size: 14px;
+    padding: 5px;
+}
+
+.o_stp_preview_container .int_ext_met .btn.selected {
+    background-color: #23d123;
+    color: white;
+}
+
+.o_stp_preview_container .part-item-modern:not(.global-paint-row) .part-actions {
+    display: none;
+}
+
+.o_stp_preview_container .part-search-input-container {
+    display: none;
+}
+
+.o_stp_preview_container .int_ext_met {
+    display: flex;
+    padding: 5px;
+    margin: 5px 0;
+    justify-content: space-between;
+}

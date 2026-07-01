@@ -126,7 +126,6 @@ export class CadViewer {
         this.bindEvents();
         this.renderUI();
         this.initThree();
-
     }
 
     bindEvents() {
@@ -231,6 +230,7 @@ export class CadViewer {
         const loader = new GLTFLoader();
         const progressFill = this.container.querySelector('.progress-fill');
 
+
         const loadModelData = async () => {
             let buffer = await getCachedModel(this.fileUrl);
 
@@ -287,7 +287,6 @@ export class CadViewer {
                         node.userData.edgeGeometry = null; // Lazy cache for edges
                     }
                 });
-                console.timeEnd('Pre-calculate Geometries');
 
                 // Get parts list from the original model
                 this.state.parts = this.getPartsFromModel(this.originalModel);
@@ -320,8 +319,7 @@ export class CadViewer {
                 this.resumeRendering();
                 this.animate();
 
-                this.updateUI(); // Initial UI update after model load
-                console.timeEnd('Model Processing');
+                this.updateUI();
             }, (err) => {
                 console.error("An error occurred while parsing the 3D model:", err);
                 this.state.loading_model = false;
@@ -835,7 +833,7 @@ export class CadViewer {
     updateGlobalToggleUI(btn, state) {
         const matchedCount = this.getMatchedParts().length;
         const totalCount = this.state.parts.length;
-        const noun = matchedCount < totalCount ? `${matchedCount} MATCHED` : 'ALL';
+        const noun = matchedCount < totalCount ? ` MATCHES` : 'ALL';
 
         const icon = btn.querySelector('i');
         const text = btn.querySelector('.btn-text');
@@ -1159,7 +1157,7 @@ export class CadViewer {
                     </div>
                     <div class="sidebar-action-box">
                         <div class="part-search-box" style="margin-bottom: 12px; padding: 0 8px;">
-                            <div style="display: flex; align-items: center; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px 10px; transition: border-color 0.2s; position: relative;">
+                            <div class="part-search-input-container">
                                 <i class="fa fa-search" style="opacity: 0.6; margin-right: 8px; color: #fff;"></i>
                                 <input type="text" class="form-control part-search-input" placeholder="Search parts (e.g. bolt -bracket)..." value="${this.state.searchQuery || ''}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; padding-right: 10px; box-shadow: none;">
                                 <div style="display: flex; align-items: center; justify-content: center; margin-left: 8px; border-left: 1px solid rgba(255, 255, 255, 0.1); padding-left: 8px;" title="Invert Results">
@@ -1167,9 +1165,15 @@ export class CadViewer {
                                     <span id="search_mode" style="font-size: 12px; margin-left: 4px; color: white;">${!this.state.invertSearch ? 'Including' : 'Excluding'}</span>
                                 </div>
                             </div>
-                            <div class="matching-parts-count" style="font-size: 11px; opacity: 0.7; padding-left: 2px; margin-top: 4px; color: rgba(255, 255, 255, 0.7);">
+                            <div class="matching-parts-count">
                                 ${matchingCount} of ${this.state.parts.length} parts matched
                             </div>
+                        </div>
+                        <div class="int_ext_met">
+                            <button class="btn btn-sm btn-primary btn_int">Internal</button>
+                            <button class="btn btn-sm btn-primary btn_ext">External</button>
+                            <button class="btn btn-sm btn-primary btn_met">MetalParts</button>
+                            <button class="btn btn-sm btn-primary btn_all selected">All</button>
                         </div>
                         <div class="part-item-modern global-paint-row">
                             <div class="part-actions" style="margin-right: 5px;">
@@ -1273,6 +1277,9 @@ export class CadViewer {
         }
 
         popoversContainer.innerHTML = popoversHtml;
+        if (popoversHtml) {
+            this.init_group_search();
+        }
 
         // Bind popover events
         if (this.state.showSidebar) {
@@ -1314,7 +1321,6 @@ export class CadViewer {
             const invertCheckbox = popoversContainer.querySelector('.part-search-invert');
             if (invertCheckbox) {
                 let self = this;
-                console.log('invertCheckbox', invertCheckbox);
                 invertCheckbox.onclick = (ev) => {
                     let inverted = false;
                     if (!ev.target.checked) {
@@ -1395,6 +1401,41 @@ export class CadViewer {
         } else {
             loaderContainer.innerHTML = '';
         }
+    }
+
+    init_group_search() {
+        const self = this;
+        const groups_btn_container = document.querySelector('.o_stp_preview_container .int_ext_met');
+        if (!groups_btn_container) {
+            console.warn('groups btn container not found');
+            return;
+        }
+        const search_input = document.querySelector('.o_stp_preview_container .part-search-input');
+        if (!search_input) {
+            console.warn('search_input not found');
+            return;
+        }
+
+        function doPartsSearch(btn, searchKeyword) {
+            groups_btn_container.querySelector('.btn.selected').classList.remove('selected');
+            btn.classList.add('selected');
+            search_input.value = searchKeyword;
+            self.providePartsSearch(searchKeyword, null);
+        }
+        groups_btn_container.querySelector('.btn_int').onclick = (ev) => {
+            doPartsSearch(ev.target, 'int');
+        };
+        groups_btn_container.querySelector('.btn_ext').onclick = (ev) => {
+            doPartsSearch(ev.target, 'ext');
+        };
+        groups_btn_container.querySelector('.btn_met').onclick = (ev) => {
+            doPartsSearch(ev.target, 'met');
+        };
+        groups_btn_container.querySelector('.btn_all').onclick = (ev) => {
+            doPartsSearch(ev.target, '');
+        };
+
+        console.log(3434, 'grouo search enabled');
     }
 }
 
