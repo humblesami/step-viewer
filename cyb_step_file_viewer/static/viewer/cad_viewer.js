@@ -680,17 +680,28 @@ export class CadViewer {
         if (this.colorDebounceTimeout) clearTimeout(this.colorDebounceTimeout);
 
         const apply = () => {
-            this.originalModel.traverse((node) => {
-                if (node.isMesh && node.material) {
-                    const oldMat = node.material;
-                    node.material = node.material.clone();
-                    node.material.color.set(color);
-                    if (oldMat) oldMat.dispose();
+            const matchedParts = this.getMatchedParts();
+            const matchedIds = new Set(matchedParts.map(p => p.id));
+
+            matchedParts.forEach(part => {
+                part.color = color;
+                const obj = this.originalModel.getObjectByProperty('uuid', part.id);
+                if (obj) {
+                    obj.traverse((node) => {
+                        if (node.isMesh) {
+                            const oldMat = node.material;
+                            node.material = node.material.clone();
+                            node.material.color.set(color);
+                            if (oldMat) oldMat.dispose();
+                        }
+                    });
                 }
             });
-            this.state.parts.forEach(p => p.color = color);
+
             const pickers = this.container.querySelectorAll('.part-color-picker');
-            pickers.forEach(p => p.value = color);
+            pickers.forEach(p => {
+                if (matchedIds.has(p.dataset.partId)) p.value = color;
+            });
             this.rebuildMergedModel();
             this.resumeRendering();
         };
@@ -758,56 +769,64 @@ export class CadViewer {
     }
 
     toggleAllVisibility() {
+        const matchedParts = this.getMatchedParts();
+        if (matchedParts.length === 0) return;
+        
         const current = this.globalVisibilityState;
-        // If all or mixed -> hide all. If none -> show all.
         const targetVisible = (current === 'none') ? true : false;
 
-        this.state.parts.forEach(part => {
+        matchedParts.forEach(part => {
             part.visible = targetVisible;
             const obj = this.originalModel.getObjectByProperty('uuid', part.id);
             if (obj) obj.visible = targetVisible;
         });
 
-        // Fast DOM update for all buttons
-        const btns = this.container.querySelectorAll('.btn-vis');
-        btns.forEach(btn => {
-            btn.className = `btn-vis ${targetVisible ? 'active' : ''}`;
-            const icon = btn.querySelector('i');
-            if (icon) icon.className = `fa ${targetVisible ? 'fa-eye' : 'fa-eye-slash'}`;
+        matchedParts.forEach(part => {
+            const btn = this.container.querySelector(`.btn-vis[data-part-id="${part.id}"]`);
+            if (btn) {
+                btn.className = `btn-vis ${targetVisible ? 'active' : ''}`;
+                const icon = btn.querySelector('i');
+                if (icon) icon.className = `fa ${targetVisible ? 'fa-eye' : 'fa-eye-slash'}`;
+            }
         });
 
-        // Update the global button state
         const globalBtn = this.container.querySelector('.global-toggle-btn');
         if (globalBtn) {
             this.updateGlobalToggleUI(globalBtn, targetVisible ? 'all' : 'none');
         }
 
-        // Instant rebuild for global actions
         this.rebuildMergedModel();
     }
 
     get globalVisibilityState() {
-        const visibleCount = this.state.parts.filter(p => p.visible).length;
+        const matchedParts = this.getMatchedParts();
+        if (matchedParts.length === 0) return 'none';
+        
+        const visibleCount = matchedParts.filter(p => p.visible).length;
         if (visibleCount === 0) return 'none';
-        if (visibleCount === this.state.parts.length) return 'all';
+        if (visibleCount === matchedParts.length) return 'all';
         return 'mixed';
     }
 
     updateGlobalToggleUI(btn, state) {
+        const matchedCount = this.getMatchedParts().length;
+        const totalCount = this.state.parts.length;
+        const noun = matchedCount < totalCount ? `${matchedCount} MATCHED` : 'ALL';
+        
         const icon = btn.querySelector('i');
         const text = btn.querySelector('.btn-text');
         if (state === 'all') {
             btn.className = 'btn btn-primary drawer-action-btn flex-grow-1 global-toggle-btn';
             if (icon) icon.className = 'fa fa-eye';
-            if (text) text.innerText = 'HIDE ALL';
+            if (text) text.innerText = `HIDE ${noun}`;
         } else if (state === 'none') {
             btn.className = 'btn btn-outline-light drawer-action-btn flex-grow-1 global-toggle-btn';
             if (icon) icon.className = 'fa fa-eye-slash';
-            if (text) text.innerText = 'SHOW ALL';
+            if (text) text.innerText = `SHOW ${noun}`;
         } else {
             btn.className = 'btn btn-warning drawer-action-btn flex-grow-1 global-toggle-btn';
             if (icon) icon.className = 'fa fa-adjust';
-            if (text) text.innerText = 'MIXED (HIDE)';
+            if (text) text.innerText = `MIXED (HIDE ${noun})`;
         }
     }
 
@@ -919,31 +938,16 @@ export class CadViewer {
         }
     }
 
-    providePartsSearch(query, invert = null) {
-        if (query !== null) {
-            this.state.searchQuery = query;
-        } else {
-            query = this.state.searchQuery;
+    getMatchedParts() {
+        if (!this.state.searchQuery && !this.state.invertSearch) {
+            return this.state.parts;
         }
-        if (invert !== null) {
-            this.state.invertSearch = invert;
-        } else {
-            invert = this.state.invertSearch;
-        }
-
-        const popup = this.container.querySelector('.o_stp_parts_popup');
-        if (!popup) return;
-
-        const terms = query.toLowerCase().split(/\s+/).filter(t => t);
-        let matchCount = 0;
-
-        this.state.parts.forEach((part) => {
-            const partEl = popup.querySelector(`.part-item-modern[data-part-id="${part.id}"]`);
-            if (!partEl) return;
-
+        
+        const terms = (this.state.searchQuery || '').toLowerCase().split(/\s+/).filter(t => t);
+        return this.state.parts.filter(part => {
+            const partNameLower = part.name.toLowerCase();
             let matches = true;
             if (terms.length > 0) {
-                const partNameLower = part.name.toLowerCase();
                 for (const term of terms) {
                     if (term.startsWith('-')) {
                         const excludeTerm = term.slice(1);
@@ -959,23 +963,55 @@ export class CadViewer {
                     }
                 }
             }
-
-            if (invert) {
+            if (this.state.invertSearch) {
                 matches = !matches;
             }
+            return matches;
+        });
+    }
 
-            if (matches) {
-                partEl.style.display = '';
-                matchCount++;
-            } else {
-                partEl.style.display = 'none';
+    updatePaintGlobalUI() {
+        const paintLabel = this.container.querySelector('.global-paint-row .part-name-text');
+        if (paintLabel) {
+            const matchedCount = this.getMatchedParts().length;
+            const totalCount = this.state.parts.length;
+            paintLabel.innerText = matchedCount < totalCount ? `Paint ${matchedCount} Matched` : `Paint All`;
+        }
+    }
+
+    providePartsSearch(query, invert = null) {
+        if (query !== null) this.state.searchQuery = query;
+        if (invert !== null) this.state.invertSearch = invert;
+
+        const popup = this.container.querySelector('.o_stp_parts_popup');
+        if (!popup) return;
+
+        const matchedParts = this.getMatchedParts();
+        const matchedIds = new Set(matchedParts.map(p => p.id));
+
+        this.state.parts.forEach((part) => {
+            const partEl = popup.querySelector(`.part-item-modern[data-part-id="${part.id}"]`);
+            if (partEl) {
+                partEl.style.display = matchedIds.has(part.id) ? '' : 'none';
             }
         });
 
         const countEl = popup.querySelector('.matching-parts-count');
         if (countEl) {
-            countEl.innerText = `${matchCount} of ${this.state.parts.length} parts matched`;
+            countEl.innerText = `${matchedParts.length} of ${this.state.parts.length} parts matched`;
         }
+
+        const clearBtn = popup.querySelector('.clear-search-btn');
+        if (clearBtn) {
+            clearBtn.style.opacity = this.state.searchQuery ? '0.6' : '0';
+            clearBtn.style.pointerEvents = this.state.searchQuery ? 'auto' : 'none';
+        }
+
+        const globalBtn = popup.querySelector('.global-toggle-btn');
+        if (globalBtn) {
+            this.updateGlobalToggleUI(globalBtn, this.globalVisibilityState);
+        }
+        this.updatePaintGlobalUI();
     }
 
     // UI Rendering & Updates
@@ -1088,34 +1124,10 @@ export class CadViewer {
         let popoversHtml = '';
 
         if (this.state.showSidebar) {
-            let matchingCount = this.state.parts.length;
-            if (this.state.searchQuery || this.state.invertSearch) {
-                const terms = this.state.searchQuery.toLowerCase().split(/\s+/).filter(t => t);
-                matchingCount = this.state.parts.filter(part => {
-                    const partNameLower = part.name.toLowerCase();
-                    let matches = true;
-                    if (terms.length > 0) {
-                        for (const term of terms) {
-                            if (term.startsWith('-')) {
-                                const excludeTerm = term.slice(1);
-                                if (excludeTerm && partNameLower.includes(excludeTerm)) {
-                                    matches = false;
-                                    break;
-                                }
-                            } else {
-                                if (!partNameLower.includes(term)) {
-                                    matches = false;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (this.state.invertSearch) {
-                        matches = !matches;
-                    }
-                    return matches;
-                }).length;
-            }
+            const matchedParts = this.getMatchedParts();
+            const matchedIds = new Set(matchedParts.map(p => p.id));
+            const matchingCount = matchedParts.length;
+            const noun = matchingCount < this.state.parts.length ? `${matchingCount} Matched` : 'All';
 
             popoversHtml += `
                 <div class="popover o_stp_parts_popup">
@@ -1125,9 +1137,10 @@ export class CadViewer {
                     </div>
                     <div class="sidebar-action-box">
                         <div class="part-search-box" style="margin-bottom: 12px; padding: 0 8px;">
-                            <div style="display: flex; align-items: center; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px 10px; transition: border-color 0.2s;">
+                            <div style="display: flex; align-items: center; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 6px 10px; transition: border-color 0.2s; position: relative;">
                                 <i class="fa fa-search" style="opacity: 0.6; margin-right: 8px; color: #fff;"></i>
-                                <input type="text" class="form-control part-search-input" placeholder="Search parts (e.g. bolt -bracket)..." value="${this.state.searchQuery || ''}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; box-shadow: none;">
+                                <input type="text" class="form-control part-search-input" placeholder="Search parts (e.g. bolt -bracket)..." value="${this.state.searchQuery || ''}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; padding-right: 20px; box-shadow: none;">
+                                <i class="fa fa-times-circle clear-search-btn" style="position: absolute; right: 40px; cursor: pointer; color: white; opacity: ${this.state.searchQuery ? '0.6' : '0'}; transition: opacity 0.2s; pointer-events: ${this.state.searchQuery ? 'auto' : 'none'};"></i>
                                 <div style="display: flex; align-items: center; justify-content: center; margin-left: 8px; border-left: 1px solid rgba(255, 255, 255, 0.1); padding-left: 8px;" title="Invert Results">
                                     <input class="part-search-invert" type="checkbox" ${this.state.invertSearch ? 'checked' : ''} style="cursor: pointer; margin: 0; width: 14px; height: 14px;">
                                 </div>
@@ -1137,7 +1150,7 @@ export class CadViewer {
                             </div>
                         </div>
                         <div class="part-item-modern global-paint-row">
-                            <span class="part-name-text">Paint All</span>
+                            <span class="part-name-text">Paint ${noun}</span>
                             <div class="part-actions">
                                 <input type="color" class="mini-color-picker global-paint-picker" value="#ffffff">
                             </div>
@@ -1150,30 +1163,7 @@ export class CadViewer {
                     </div>
                     <div class="sidebar-content">
                         ${this.state.parts.map(part => {
-                            let matches = true;
-                            if (this.state.searchQuery || this.state.invertSearch) {
-                                const terms = this.state.searchQuery.toLowerCase().split(/\s+/).filter(t => t);
-                                const partNameLower = part.name.toLowerCase();
-                                if (terms.length > 0) {
-                                    for (const term of terms) {
-                                        if (term.startsWith('-')) {
-                                            const excludeTerm = term.slice(1);
-                                            if (excludeTerm && partNameLower.includes(excludeTerm)) {
-                                                matches = false;
-                                                break;
-                                            }
-                                        } else {
-                                            if (!partNameLower.includes(term)) {
-                                                matches = false;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                                if (this.state.invertSearch) {
-                                    matches = !matches;
-                                }
-                            }
+                            const matches = matchedIds.has(part.id);
                             return `
                                 <div class="part-item-modern" data-part-id="${part.id}" style="${matches ? '' : 'display: none;'}">
                                     <span class="part-name-text" title="Volume: ${Math.round(part.volume)}">${part.name}</span>
@@ -1260,6 +1250,16 @@ export class CadViewer {
                 };
                 searchInput.oninput = handleSearch;
                 searchInput.onkeyup = handleSearch;
+            }
+            
+            const clearBtn = popoversContainer.querySelector('.clear-search-btn');
+            if (clearBtn) {
+                clearBtn.onclick = () => {
+                    if (searchInput) {
+                        searchInput.value = '';
+                        this.providePartsSearch('');
+                    }
+                };
             }
             
             const invertCheckbox = popoversContainer.querySelector('.part-search-invert');
