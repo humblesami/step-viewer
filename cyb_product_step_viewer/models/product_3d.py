@@ -15,19 +15,19 @@ class SaleOrderLine(models.Model):
         compute="_compute_is_model_modified",
         store=False,
     )
-    @api.depends('finished_client_model.checksum', 'product_id.step_files')
+    @api.depends('finished_client_model.checksum', 'product_id.step_file_id')
     def _compute_is_model_modified(self):
         for line in self:
-            if line.finished_client_model and line.product_id.step_files:
-                original = line.product_id.step_files[0]
+            if line.finished_client_model and line.product_id.step_file_id:
+                original = line.product_id.step_file_id
                 line.is_model_modified = (line.finished_client_model.checksum != original.checksum)
             else:
                 line.is_model_modified = False
 
     def action_restore_original_model(self):
         for line in self:
-            if line.product_id.step_files and line.finished_client_model:
-                original = line.product_id.step_files[0]
+            if line.product_id.step_file_id and line.finished_client_model:
+                original = line.product_id.step_file_id
                 line.finished_client_model.sudo().write({
                     'datas': original.datas,
                     'name': f'Finished_Model_{line.id}_{original.name}',
@@ -37,8 +37,8 @@ class SaleOrderLine(models.Model):
     def create(self, vals_list):
         lines = super(SaleOrderLine, self).create(vals_list)
         for line in lines:
-            if line.product_id.step_files and not line.finished_client_model:
-                first_model = line.product_id.step_files[0]
+            if line.product_id.step_file_id and not line.finished_client_model:
+                first_model = line.product_id.step_file_id
                 new_att = first_model.sudo().copy({
                     'name': f'Finished_Model_{line.id}_{first_model.name}',
                     'res_model': 'sale.order.line',
@@ -51,36 +51,72 @@ class SaleOrderLine(models.Model):
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
-    step_files = fields.Many2many(
+    step_file_id = fields.Many2one(
         'ir.attachment',
-        'product_step_attachment_rel',
-        'product_id', 'attachment_id',
-        string='3D Models',
         help="Upload .step, .stp, or .glb files. STEP files >= 4MB will be automatically exported to GLB."
     )
+    
+    # Proxy fields for better upload UX in the form view
+    step_file_content = fields.Binary(string='3D Model File', compute='_compute_step_content', inverse='_inverse_step_content')
+    step_file_name = fields.Char(string='File Name')
 
+    @api.depends('step_file_id')
+    def _compute_step_content(self):
+        for rec in self:
+            if rec.step_file_id:
+                # We do not load the actual binary data into the form view for performance, 
+                # we just need the field to appear "truthy" so the widget shows the file is attached.
+                # Odoo's binary widget will fetch it via the download route if needed.
+                # Actually, returning a dummy value works, but returning datas is standard if size isn't huge.
+                # For safety, let's just return a placeholder or the actual data.
+                rec.step_file_content = b'1' # Placeholder so the widget knows it exists without lagging the page
+                rec.step_file_name = rec.step_file_id.name
+            else:
+                rec.step_file_content = False
+                rec.step_file_name = False
 
-    def write(self, vals):
-        res = super(ProductTemplate, self).write(vals)
-        if self.step_files:
-            if vals.get('step_files'):
-                for att in self.step_files:
-                    self.env['step.file.service'].process_attachment(att)
-        return res
+    def _inverse_step_content(self):
+        for rec in self:
+            if rec.step_file_content and rec.step_file_content != b'1':
+                if rec.step_file_id:
+                    rec.step_file_id.sudo().write({
+                        'datas': rec.step_file_content,
+                        'name': rec.step_file_name or 'model.step'
+                    })
+                else:
+                    att = self.env['ir.attachment'].sudo().create({
+                        'name': rec.step_file_name or 'model.step',
+                        'type': 'binary',
+                        'datas': rec.step_file_content,
+                        'res_model': 'product.template',
+                        'res_id': rec.id
+                    })
+                    rec.step_file_id = att.id
+            elif not rec.step_file_content:
+                if rec.step_file_id:
+                    rec.step_file_id.sudo().unlink()
+                    rec.step_file_id = False
+
 
     @api.model_create_multi
-    def create(self, vals_list):
-        records = super(ProductTemplate, self).create(vals_list)
-        for record in records:
-            for att in record.step_files:
-                self.env['step.file.service'].process_attachment(att)
+    def create(self, values):
+        records = super().create(values)
+        for item in records:
+            if item.step_file_id:
+                self.env['step.file.service'].process_attachment(self.step_file_id)
         return records
 
-    @api.constrains('step_files')
-    def _check_step_files(self):
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get('step_file_content') or vals.get('step_file_id'):
+            self.env['step.file.service'].process_attachment(self.step_file_id)
+        return res
+
+    @api.constrains('step_file_id')
+    def _check_step_file(self):
         msg = _('Only .step, .stp, .glb, or .gltf files are allowed.')
         for rec in self:
-            for att in rec.step_files:
-                ext = att.name.rsplit('.', 1)[-1].lower()
+            if rec.step_file_id:
+                ext = rec.step_file_id.name.rsplit('.', 1)[-1].lower()
                 if ext not in ('step', 'stp', 'glb', 'gltf'):
                     raise ValidationError(msg)

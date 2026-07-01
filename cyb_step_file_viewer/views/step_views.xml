@@ -9,8 +9,8 @@
                           <field name="file_title" />
                           <field name="file_raw_name" invisible="1"/>
                           <field name="original_stp" filename="file_raw_name"/>
-                          <button invisible="not conversion_pending" name="action_preview_step_files" type="object"
-                                  string="Preview File" class="oe_highlight"/>
+<!--                          <button invisible="not conversion_pending" name="action_preview_step_files" type="object"-->
+<!--                                  string="Preview File" class="oe_highlight"/>-->
                       </group>
                   </form>
               </field>
@@ -40,8 +40,8 @@
               <field name="tag">step_files_preview_tag</field>
           </record>
 
-          <menuitem name="STP Viewer" id="stp_viewer_menu"/>
-          <menuitem name="Viewer" id="menu_1" action="stp_viewer_action_window"
-                    parent="stp_viewer_menu"/>
+<!--          <menuitem name="STP Viewer" id="stp_viewer_menu"/>-->
+<!--          <menuitem name="Viewer" id="menu_1" action="stp_viewer_action_window"-->
+<!--                    parent="stp_viewer_menu"/>-->
       </data>
 </odoo>

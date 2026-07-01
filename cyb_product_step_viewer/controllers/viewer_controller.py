@@ -22,8 +22,8 @@ class ProductStepViewerController(http.Controller):
                 if sale_order_line.order_id.access_token != access_token:
                      return {'status': 'error', 'message': 'Invalid access token'}
 
-            if sale_order_line.product_id.step_files and sale_order_line.finished_client_model:
-                original = sale_order_line.product_id.step_files[0]
+            if sale_order_line.product_id.step_file_id and sale_order_line.finished_client_model:
+                original = sale_order_line.product_id.step_file_id
                 sale_order_line.finished_client_model.sudo().write({
                     'datas': original.datas,
                     'name': f'Finished_Model_{sale_order_line.id}_{original.name}',

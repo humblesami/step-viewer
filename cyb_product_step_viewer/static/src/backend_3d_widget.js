@@ -30,7 +30,12 @@ export class Many2One3DViewer extends Component {
         <div class="d-flex">
             <t t-if="props.record.data[props.name]">
                 <button class="btn btn-primary btn-sm" t-on-click="onFinishModelClick">
-                    Finish model
+                    <t t-if="['product.template', 'product.product'].includes(props.record.resModel)">
+                        Preview Model
+                    </t>
+                    <t t-else="">
+                        Finish model
+                    </t>
                 </button>
             </t>
             <span t-else=""></span>
@@ -45,8 +50,12 @@ export class Many2One3DViewer extends Component {
         const attachmentId = this.props.record.data[this.props.name].id;
         if (!attachmentId) return;
 
-        const filename = this.props.record.data[this.props.name].display_name;
-        const productId = this.props.record.data.product_id.id;
+        const filename = this.props.record.data[this.props.name].display_name || this.props.record.data[this.props.name][1];
+        
+        let productId = null;
+        if (this.props.record.data.product_id) {
+            productId = this.props.record.data.product_id.id || this.props.record.data.product_id[0];
+        }
         const lineId = this.props.record.resId;
 
         // Build your URL matching your exact frontend logic
@@ -58,6 +67,9 @@ export class Many2One3DViewer extends Component {
         }
         if (lineId) {
             query_params += `&line_id=${lineId}`;
+        }
+        if (['product.template', 'product.product'].includes(this.props.record.resModel)) {
+            query_params += `&hide_save=1`;
         }
         query_params += `&t=${Date.now()}`;
         const iframeSrc = window.location.origin + web_page + query_params;
@@ -106,7 +118,6 @@ export class Many2One3DViewer extends Component {
 
 export const many2One3DViewer = {
     component: Many2One3DViewer,
-    fieldDependencies: [{ name: "product_id", type: "many2one" }],
 };
 
 registry.category("fields").add("many2one_3d_viewer", many2One3DViewer);

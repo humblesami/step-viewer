@@ -8,20 +8,18 @@
     <template id="product_step_files_list" inherit_id="website_sale.product">
         <xpath expr="//div[@id='o_wsale_product_details_content']/form[1]" position="before">
 
-            <t t-if="product.step_files">
+            <t t-if="product.step_file_id">
                 <div class="step_files_container mb-3">
                     <h6 class="text-muted mb-2">Available 3D Models:</h6>
                     <div class="d-flex flex-wrap gap-2">
-                        <t t-foreach="product.step_files" t-as="step_file">
-                            <button type="button"
-                                    class="btn btn-outline-primary btn-sm step-file-trigger"
-                                    t-att-data-attachment-id="step_file.id"
-                                    t-att-data-product-id="product.id"
-                                    t-att-data-filename="step_file.name">
-                                <i class="fa fa-cube me-1"></i>
-                                <span t-esc="step_file.name"/>
-                            </button>
-                        </t>
+                        <button type="button"
+                                class="btn btn-outline-primary btn-sm step-file-trigger"
+                                t-att-data-attachment-id="product.step_file_id.id"
+                                t-att-data-product-id="product.id"
+                                t-att-data-filename="product.step_file_id.name">
+                            <i class="fa fa-cube me-1"></i>
+                            <span t-esc="product.step_file_id.name"/>
+                        </button>
                     </div>
                 </div>
             </t>
@@ -47,7 +45,7 @@
         </xpath>
 
         <xpath expr="//t[@t-call='website.layout']" position="inside">
-            <t t-if="product.step_files">
+            <t t-if="product.step_file_id">
                 <div id="step_viewer_iframe_container" class="modal-overlay">
                     <link rel="stylesheet" href="/cyb_product_step_viewer/static/css/product_page.css"/>
                     <div class="modal-container">

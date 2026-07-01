@@ -10,7 +10,7 @@ class IrAttachment(models.Model):
 
     def needs_step_conversion(self):
         is_step_file = str(self.raw or '').startswith("b\"ISO-10303-21;")
-        if is_step_file and not self.is_step_processed:
+        if is_step_file:
             return True
         return False
         

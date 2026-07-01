@@ -416,67 +416,81 @@ export class CadViewer {
 
     getPartsFromModel(model) {
         let root = model;
-
-        // Recursively unwrap single-child containers to find the actual assembly level
         while (root.children.length === 1 && (root.children[0].type === 'Group' || root.children[0].type === 'Object3D')) {
             root = root.children[0];
         }
 
-        let all_parts = [];
-        const filtered_parts = [];
-        // Optimized single-pass collection of part data
-        root.children.forEach((child, index) => {
-            let initialColor = "#cccccc";
+        const all_parts = [];
+        
+        const traverse = (node, level, parentId) => {
+            if (node.isMesh || node.isLineSegments) return; 
 
-            // Check if child is directly a mesh
-            if (child.isMesh && child.material) {
-                child.material.envMapIntensity = 1.5;
-                if (child.material.color) {
-                    initialColor = "#" + child.material.color.getHexString();
-                }
-            } else {
-                // Quickly find first mesh color in hierarchy and set envMapIntensity
-                child.traverse((node) => {
-                    if (node.isMesh && node.material) {
-                        node.material.envMapIntensity = 1.5;
-                        if (initialColor === "#cccccc" && node.material.color) {
-                            initialColor = "#" + node.material.color.getHexString();
+            // Only treat nodes created by our Python script as actual structural nodes.
+            const isStructural = node.name && node.name !== 'Scene' && node.name !== 'RootAssembly';
+            const validChildren = node.children.filter(c => !c.isMesh && !c.isLineSegments);
+            
+            let currentLevel = level;
+            let currentId = parentId;
+
+            if (isStructural) {
+                let initialColor = "#cccccc";
+                node.traverse((n) => {
+                    if (n.isMesh && n.material) {
+                        n.material.envMapIntensity = 1.5;
+                        if (initialColor === "#cccccc" && n.material.color) {
+                            initialColor = "#" + n.material.color.getHexString();
                         }
                     }
                 });
-            }
 
-            // Calculate volume for sorting (Box3 size proxy)
-            const box = new THREEModules.Box3().setFromObject(child);
-            const size = box.getSize(new THREEModules.Vector3());
-            const volume = size.x * size.y * size.z;
-
-            all_parts.push({
-                id: child.uuid,
-                name: child.name || `Part ${index + 1}`,
-                visible: child.visible,
-                color: initialColor,
-                volume: volume
-            });
-            if (child.visible && child.isObject3D && volume > 0) {
-                filtered_parts.push({
-                    id: child.uuid,
-                    name: child.name || `Part ${index + 1}`,
-                    visible: true,
+                const box = new THREEModules.Box3().setFromObject(node);
+                const size = box.getSize(new THREEModules.Vector3());
+                const volume = size.x * size.y * size.z;
+                
+                currentId = node.uuid;
+                
+                all_parts.push({
+                    id: currentId,
+                    name: node.name,
+                    visible: node.visible,
                     color: initialColor,
-                    volume: volume
+                    volume: volume,
+                    level: currentLevel,
+                    parentId: parentId,
+                    expanded: true,
+                    childrenIds: [] // Populated below
                 });
+                
+                currentLevel++; // Indent children
             }
+            
+            validChildren.forEach(c => traverse(c, currentLevel, currentId));
+        };
+
+        traverse(root, 0, null);
+        
+        all_parts.forEach(part => {
+            part.childrenIds = all_parts.filter(p => p.parentId === part.id).map(p => p.id);
+            part.isAssembly = part.childrenIds.length > 0;
         });
 
-        // Filter out invisible parts
-        console.info("All Parts 4: ", all_parts.length);
-        console.info("Filtered Parts: ", filtered_parts.length);
+        return all_parts;
+    }
 
-        // Sort parts by volume descending so major parts are on top
-        filtered_parts.sort((a, b) => a.name.localeCompare(b.name));
-
-        return filtered_parts;
+    getDescendantIds(partId) {
+        const descendants = [];
+        const part = this.state.parts.find(p => p.id === partId);
+        if (!part) return descendants;
+        
+        const traverse = (p) => {
+            p.childrenIds.forEach(childId => {
+                descendants.push(childId);
+                const child = this.state.parts.find(c => c.id === childId);
+                if (child) traverse(child);
+            });
+        };
+        traverse(part);
+        return descendants;
     }
 
     generateEdges(model) {
@@ -720,50 +734,60 @@ export class CadViewer {
         const apply = () => {
             const part = this.state.parts.find(p => p.id === partId);
             if (part) {
-                part.color = color;
-                const obj = this.originalModel.getObjectByProperty('uuid', partId);
-                if (obj) {
-                    obj.traverse((node) => {
-                        if (node.isMesh) {
-                            const oldMat = node.material;
-                            node.material = node.material.clone();
-                            node.material.color.set(color);
-                            if (oldMat) oldMat.dispose();
-                        }
-                    });
-                }
+                const idsToColor = [partId, ...this.getDescendantIds(partId)];
+                idsToColor.forEach(id => {
+                    const p = this.state.parts.find(x => x.id === id);
+                    if (p) p.color = color;
+                    
+                    const obj = this.originalModel.getObjectByProperty('uuid', id);
+                    if (obj) {
+                        obj.traverse((node) => {
+                            if (node.isMesh) {
+                                const oldMat = node.material;
+                                node.material = node.material.clone();
+                                node.material.color.set(color);
+                                if (oldMat) oldMat.dispose();
+                            }
+                        });
+                    }
+                    
+                    const picker = this.container.querySelector(`.part-color-picker[data-part-id="${id}"]`);
+                    if (picker) picker.value = color;
+                });
             }
             this.rebuildMergedModel();
             this.resumeRendering();
         };
 
-        if (immediate) {
-            apply();
-        } else {
-            this.colorDebounceTimeout = setTimeout(apply, 2000);
-        }
+        if (immediate) apply();
+        else this.colorDebounceTimeout = setTimeout(apply, 2000);
     }
 
     toggleVisibility(ev, partId) {
         const btn = ev.currentTarget;
         const part = this.state.parts.find(p => p.id === partId);
         if (part) {
-            part.visible = !part.visible;
-            const obj = this.originalModel.getObjectByProperty('uuid', partId);
-            if (obj) obj.visible = part.visible;
+            const targetVisible = !part.visible;
+            const idsToToggle = [partId, ...this.getDescendantIds(partId)];
+            
+            idsToToggle.forEach(id => {
+                const p = this.state.parts.find(x => x.id === id);
+                if (p) {
+                    p.visible = targetVisible;
+                    const obj = this.originalModel.getObjectByProperty('uuid', id);
+                    if (obj) obj.visible = targetVisible;
+                    
+                    const dBtn = this.container.querySelector(`.btn-vis[data-part-id="${id}"]`);
+                    if (dBtn) {
+                        dBtn.className = `btn-vis ${targetVisible ? 'active' : ''}`;
+                        const icon = dBtn.querySelector('i');
+                        if (icon) icon.className = `fa ${targetVisible ? 'fa-eye' : 'fa-eye-slash'}`;
+                    }
+                }
+            });
 
-            // Direct DOM update for instant feedback without full re-render
-            if (btn) {
-                btn.className = `btn-vis ${part.visible ? 'active' : ''}`;
-                const icon = btn.querySelector('i');
-                if (icon) icon.className = `fa ${part.visible ? 'fa-eye' : 'fa-eye-slash'}`;
-            }
-
-            // Sync global toggle button state
             const globalBtn = this.container.querySelector('.global-toggle-btn');
-            if (globalBtn) {
-                this.updateGlobalToggleUI(globalBtn, this.globalVisibilityState);
-            }
+            if (globalBtn) this.updateGlobalToggleUI(globalBtn, this.globalVisibilityState);
         }
         this.scheduleRebuild(300);
     }
@@ -944,7 +968,9 @@ export class CadViewer {
         }
         
         const terms = (this.state.searchQuery || '').toLowerCase().split(/\s+/).filter(t => t);
-        return this.state.parts.filter(part => {
+        const directMatches = new Set();
+        
+        this.state.parts.forEach(part => {
             const partNameLower = part.name.toLowerCase();
             let matches = true;
             if (terms.length > 0) {
@@ -963,11 +989,32 @@ export class CadViewer {
                     }
                 }
             }
-            if (this.state.invertSearch) {
-                matches = !matches;
-            }
-            return matches;
+            if (this.state.invertSearch) matches = !matches;
+            if (matches) directMatches.add(part.id);
         });
+
+        const finalMatches = new Set();
+        
+        const addAncestors = (partId) => {
+            const part = this.state.parts.find(p => p.id === partId);
+            if (part && part.parentId) {
+                finalMatches.add(part.parentId);
+                addAncestors(part.parentId);
+            }
+        };
+
+        const addDescendants = (partId) => {
+            const descendants = this.getDescendantIds(partId);
+            descendants.forEach(dId => finalMatches.add(dId));
+        };
+
+        directMatches.forEach(id => {
+            finalMatches.add(id);
+            addAncestors(id);
+            addDescendants(id);
+        });
+
+        return this.state.parts.filter(p => finalMatches.has(p.id));
     }
 
     updatePaintGlobalUI() {
@@ -992,7 +1039,16 @@ export class CadViewer {
         this.state.parts.forEach((part) => {
             const partEl = popup.querySelector(`.part-item-modern[data-part-id="${part.id}"]`);
             if (partEl) {
-                partEl.style.display = matchedIds.has(part.id) ? '' : 'none';
+                let isCollapsedByParent = false;
+                let currParent = this.state.parts.find(p => p.id === part.parentId);
+                while (currParent) {
+                    if (!currParent.expanded) {
+                        isCollapsedByParent = true;
+                        break;
+                    }
+                    currParent = this.state.parts.find(p => p.id === currParent.parentId);
+                }
+                partEl.style.display = (matchedIds.has(part.id) && !isCollapsedByParent) ? '' : 'none';
             }
         });
 
@@ -1008,9 +1064,7 @@ export class CadViewer {
         }
 
         const globalBtn = popup.querySelector('.global-toggle-btn');
-        if (globalBtn) {
-            this.updateGlobalToggleUI(globalBtn, this.globalVisibilityState);
-        }
+        if (globalBtn) this.updateGlobalToggleUI(globalBtn, this.globalVisibilityState);
         this.updatePaintGlobalUI();
     }
 
@@ -1164,9 +1218,27 @@ export class CadViewer {
                     <div class="sidebar-content">
                         ${this.state.parts.map(part => {
                             const matches = matchedIds.has(part.id);
+                            let isCollapsedByParent = false;
+                            let currParent = this.state.parts.find(p => p.id === part.parentId);
+                            while (currParent) {
+                                if (!currParent.expanded) {
+                                    isCollapsedByParent = true;
+                                    break;
+                                }
+                                currParent = this.state.parts.find(p => p.id === currParent.parentId);
+                            }
+                            
+                            const displayStyle = (matches && !isCollapsedByParent) ? '' : 'display: none;';
+                            const expanderHtml = part.isAssembly 
+                                ? `<i class="fa ${part.expanded ? 'fa-caret-down' : 'fa-caret-right'} tree-expander" data-part-id="${part.id}" style="cursor: pointer; width: 16px; text-align: center; margin-right: 4px;"></i>`
+                                : `<span style="width: 20px; display: inline-block;"></span>`;
+
+                            const nameStyle = part.isAssembly ? 'font-weight: 600;' : '';
+
                             return `
-                                <div class="part-item-modern" data-part-id="${part.id}" style="${matches ? '' : 'display: none;'}">
-                                    <span class="part-name-text" title="Volume: ${Math.round(part.volume)}">${part.name}</span>
+                                <div class="part-item-modern" data-part-id="${part.id}" style="${displayStyle} padding-left: ${part.level * 16 + 8}px;">
+                                    ${expanderHtml}
+                                    <span class="part-name-text" style="${nameStyle}" title="Volume: ${Math.round(part.volume)}">${part.name}</span>
                                     <div class="part-actions">
                                         <input type="color" value="${part.color}" data-part-id="${part.id}" class="mini-color-picker part-color-picker">
                                         <button class="btn-vis ${part.visible ? 'active' : ''}" data-part-id="${part.id}">
@@ -1282,6 +1354,18 @@ export class CadViewer {
             popoversContainer.querySelectorAll('.btn-vis').forEach(el => {
                 el.onclick = (e) => this.toggleVisibility(e, e.currentTarget.dataset.partId);
             });
+            
+            popoversContainer.querySelectorAll('.tree-expander').forEach(exp => {
+                exp.onclick = (e) => {
+                    const partId = e.currentTarget.dataset.partId;
+                    const part = this.state.parts.find(p => p.id === partId);
+                    if (part) {
+                        part.expanded = !part.expanded;
+                        e.currentTarget.className = `fa ${part.expanded ? 'fa-caret-down' : 'fa-caret-right'} tree-expander`;
+                        this.providePartsSearch(null, null); // Refresh DOM visibility instantly
+                    }
+                };
+            });
 
             // Restore scroll position
             const newSidebarContent = popoversContainer.querySelector('.sidebar-content');
@@ -1354,8 +1438,9 @@ export class CadViewer {
         let product_id = findQueryParam('product_id');
         let line_id = findQueryParam('line_id');
         let access_token = findQueryParam('access_token');
+        let hide_save = findQueryParam('hide_save');
         console.log(product_id, 'product_id');
-        if (product_id || line_id) {
+        if ((product_id || line_id) && !hide_save) {
             function addToCartSaveModelBtn() {
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-dark tool-btn tool-btn-save';
