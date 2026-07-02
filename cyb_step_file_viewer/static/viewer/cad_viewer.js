@@ -103,7 +103,7 @@ export class CadViewer {
             showSidebar: false,
             showLightsPopup: false,
             showEdgePopup: false,
-            searchQuery: '',
+            searchQuery: 'others',
             invertSearch: false,
         };
 
@@ -290,6 +290,16 @@ export class CadViewer {
 
                 // Get parts list from the original model
                 this.state.parts = this.getPartsFromModel(this.originalModel);
+
+                // Initialize visibility based on default searchQuery ('others')
+                const matchedParts = this.getMatchedParts();
+                const matchedIds = new Set(matchedParts.map(p => p.id));
+                this.state.parts.forEach(part => {
+                    const isVisible = matchedIds.has(part.id);
+                    part.visible = isVisible;
+                    const obj = this.originalModel.getObjectByProperty('uuid', part.id);
+                    if (obj) obj.visible = isVisible;
+                });
 
                 // Build the Merged Layer for performance
                 this.rebuildMergedModel();
@@ -931,7 +941,7 @@ export class CadViewer {
     }
 
     getMatchedParts() {
-        const query = this.state.searchQuery === undefined || this.state.searchQuery === null ? 'int+ext+met+others' : this.state.searchQuery;
+        const query = this.state.searchQuery === undefined || this.state.searchQuery === null ? 'others' : this.state.searchQuery;
         if (!query) {
             return [];
         }
@@ -1127,7 +1137,7 @@ export class CadViewer {
         if (this.state.showSidebar) {
             const matchedParts = this.getMatchedParts();
             const matchedIds = new Set(matchedParts.map(p => p.id));
-            const query = this.state.searchQuery === undefined || this.state.searchQuery === null ? 'int+ext+met+others' : this.state.searchQuery;
+            const query = this.state.searchQuery === undefined || this.state.searchQuery === null ? 'others' : this.state.searchQuery;
             const matchingCount = matchedParts.length;
 
             const noun = matchingCount < this.state.parts.length ? `${matchingCount} Shown Parts` : 'All Shown Parts';

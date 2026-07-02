@@ -23,7 +23,7 @@
 }
 
 .o_stp_preview_container .popover.o_stp_parts_popup {
-    width: 300px;
+    width: 320px;
     display: flex;
     flex-direction: column;
     resize: horizontal;
@@ -201,11 +201,30 @@
     justify-content: space-between;
 }
 
-.o_stp_preview_container .matching_others_all_parts .btn,
+.o_stp_preview_container .int_ext_met {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
 .o_stp_preview_container .int_ext_met .btn {
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     padding: 5px;
+    border-radius: 6px;
+    color: white;
+    border: 1px solid;
+    transition: all 0.2s ease;
+    flex: 1;
+    background-color: rgba(0, 0, 0, 0.5);
+    text-align: center;
+    box-shadow: none;
+}
+
+.o_stp_preview_container .int_ext_met .btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white;
 }
 
 .o_stp_preview_container .disabled-filter {
@@ -213,10 +232,11 @@
     pointer-events: none;
 }
 
-.o_stp_preview_container .matching_others_all_parts .btn.selected,
 .o_stp_preview_container .int_ext_met .btn.selected {
-    background-color: #23d123;
+    background-color: #00a09d;
+    border-color: #008885;
     color: white;
+    font-weight: 600;
 }
 
 .o_stp_preview_container .global-toggle-btn .selected {
@@ -229,9 +249,4 @@
 
 .o_stp_preview_container .part-search-input-container {
     display: none;
-}
-
-.o_stp_preview_container .int_ext_met {
-    display: flex;
-    justify-content: space-between;
 }
