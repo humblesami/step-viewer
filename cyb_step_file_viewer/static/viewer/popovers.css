@@ -184,6 +184,11 @@
     border-color: rgba(255, 255, 255, 0.15);
 }
 
+.parts-list-actions,
+.search-filters-bar {
+    padding: 10px 5px;
+}
+
 .o_stp_preview_container .matching-parts-count {
     font-size: 12px;
     padding-left: 2px;
@@ -191,15 +196,31 @@
     color: white;
 }
 
+.o_stp_preview_container .matching_others_all_parts {
+    display: flex;
+    justify-content: space-between;
+}
+
+.o_stp_preview_container .matching_others_all_parts .btn,
 .o_stp_preview_container .int_ext_met .btn {
     cursor: pointer;
     font-size: 14px;
     padding: 5px;
 }
 
+.o_stp_preview_container .disabled-filter {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.o_stp_preview_container .matching_others_all_parts .btn.selected,
 .o_stp_preview_container .int_ext_met .btn.selected {
     background-color: #23d123;
     color: white;
+}
+
+.o_stp_preview_container .global-toggle-btn .selected {
+    display: none;
 }
 
 .o_stp_preview_container .part-item-modern:not(.global-paint-row) .part-actions {
@@ -212,7 +233,5 @@
 
 .o_stp_preview_container .int_ext_met {
     display: flex;
-    padding: 5px;
-    margin: 5px 0;
     justify-content: space-between;
 }
