@@ -34,14 +34,14 @@ export class Many2One3DViewer extends Component {
 
     static template = xml`
         <div class="d-flex">
-            <t t-if="props.record.data[props.name]">
+            <t t-if="props.record.resModel === 'sale.order.line' and props.record.data.product_step_file_id">
                 <button class="btn btn-primary btn-sm" t-on-click="onFinishModelClick">
-                    <t t-if="['product.template', 'product.product'].includes(props.record.resModel)">
-                        Preview Model
-                    </t>
-                    <t t-else="">
-                        Finish model
-                    </t>
+                    Finish model
+                </button>
+            </t>
+            <t t-elif="props.record.resModel !== 'sale.order.line' and props.record.data[props.name]">
+                <button class="btn btn-primary btn-sm" t-on-click="onFinishModelClick">
+                    Preview Model
                 </button>
             </t>
             <span t-else=""></span>
@@ -53,14 +53,30 @@ export class Many2One3DViewer extends Component {
         ev.preventDefault();
         ev.stopPropagation();
 
-        const attachmentId = this.props.record.data[this.props.name].id;
-        if (!attachmentId) return;
+        let attachmentId = null;
+        let filename = 'Model';
 
-        const filename = this.props.record.data[this.props.name].display_name || this.props.record.data[this.props.name][1];
+        if (this.props.record.resModel === 'sale.order.line') {
+            const stepFile = this.props.record.data.product_step_file_id;
+            if (stepFile) {
+                attachmentId = Array.isArray(stepFile) ? stepFile[0] : stepFile.id;
+                filename = Array.isArray(stepFile) ? stepFile[1] : (stepFile.display_name || 'Model');
+            }
+        } else {
+            const dataVal = this.props.record.data[this.props.name];
+            if (dataVal) {
+                attachmentId = dataVal.id || (Array.isArray(dataVal) ? dataVal[0] : dataVal);
+                filename = dataVal.display_name || (Array.isArray(dataVal) ? dataVal[1] : 'Model');
+            }
+        }
+
+        if (!attachmentId) return;
 
         let productId = null;
         if (this.props.record.data.product_id) {
-            productId = this.props.record.data.product_id.id || this.props.record.data.product_id[0];
+            productId = Array.isArray(this.props.record.data.product_id) 
+                ? this.props.record.data.product_id[0] 
+                : this.props.record.data.product_id.id;
         }
         const lineId = this.props.record.resId;
 

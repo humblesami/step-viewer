@@ -291,15 +291,48 @@ export class CadViewer {
                 // Get parts list from the original model
                 this.state.parts = this.getPartsFromModel(this.originalModel);
 
-                // Initialize visibility based on default searchQuery ('others')
-                const matchedParts = this.getMatchedParts();
-                const matchedIds = new Set(matchedParts.map(p => p.id));
-                this.state.parts.forEach(part => {
-                    const isVisible = matchedIds.has(part.id);
-                    part.visible = isVisible;
-                    const obj = this.originalModel.getObjectByProperty('uuid', part.id);
-                    if (obj) obj.visible = isVisible;
-                });
+                if (this.options.customization && this.options.customization.parts) {
+                    // Apply saved customizations
+                    const customizations = this.options.customization.parts;
+                    const customMap = new Map();
+                    customizations.forEach(c => {
+                        // Fallback to id if name is missing (for older saved models)
+                        if (c.name) customMap.set(c.name, c);
+                        else customMap.set(c.id, c);
+                    });
+
+                    this.state.parts.forEach(part => {
+                        const custom = customMap.get(part.name) || customMap.get(part.id);
+                        if (custom) {
+                            part.visible = custom.visible;
+                            part.color = custom.color;
+                            const obj = this.originalModel.getObjectByProperty('uuid', part.id);
+                            if (obj) {
+                                obj.visible = custom.visible;
+                                if (custom.color && custom.color !== '#ffffff') {
+                                    obj.traverse((node) => {
+                                        if (node.isMesh) {
+                                            const oldMat = node.material;
+                                            node.material = node.material.clone();
+                                            node.material.color.set(custom.color);
+                                            if (oldMat) oldMat.dispose();
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // Initialize visibility based on default searchQuery ('others')
+                    const matchedParts = this.getMatchedParts();
+                    const matchedIds = new Set(matchedParts.map(p => p.id));
+                    this.state.parts.forEach(part => {
+                        const isVisible = matchedIds.has(part.id);
+                        part.visible = isVisible;
+                        const obj = this.originalModel.getObjectByProperty('uuid', part.id);
+                        if (obj) obj.visible = isVisible;
+                    });
+                }
 
                 // Build the Merged Layer for performance
                 this.rebuildMergedModel();
@@ -330,6 +363,11 @@ export class CadViewer {
                 this.animate();
 
                 this.updateUI();
+                console.log('Bottom toolbar is hidden');
+                const bottom_toolbar = document.querySelector('.o_stp_bottom_toolbar');
+                if (bottom_toolbar) {
+                    bottom_toolbar.style.display = 'flex';
+                }
             }, (err) => {
                 console.error("An error occurred while parsing the 3D model:", err);
                 this.state.loading_model = false;
@@ -842,33 +880,38 @@ export class CadViewer {
     }
 
     downloadModel() {
-        const exporter = new GLTFExporter();
-        const options = {
-            binary: true,
-            onlyVisible: true, // Only download what's currently visible
-            maxTextureSize: 4096
-        };
+        this.setProcessing(true, 'Preparing Download... Please wait');
+        setTimeout(() => {
+            const exporter = new GLTFExporter();
+            const options = {
+                binary: true,
+                onlyVisible: true, // Only download what's currently visible
+                maxTextureSize: 4096
+            };
 
-        // Export the originalModel because it has the user's color/visibility modifications
-        exporter.parse(
-            this.originalModel,
-            (result) => {
-                const blob = new Blob([result], { type: 'application/octet-stream' });
-                const link = document.createElement('a');
-                const filename = (this.options.filename || 'model.glb').replace('.step', '.glb').replace('.stp', '.glb');
+            // Export the originalModel because it has the user's color/visibility modifications
+            exporter.parse(
+                this.originalModel,
+                (result) => {
+                    const blob = new Blob([result], { type: 'application/octet-stream' });
+                    const link = document.createElement('a');
+                    const filename = (this.options.filename || 'model.glb').replace('.step', '.glb').replace('.stp', '.glb');
 
-                link.href = URL.createObjectURL(blob);
-                link.download = filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(link.href);
-            },
-            (error) => {
-                console.error('An error happened during GLTF export:', error);
-            },
-            options
-        );
+                    link.href = URL.createObjectURL(blob);
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+                    this.setProcessing(false);
+                },
+                (error) => {
+                    console.error('An error happened during GLTF export:', error);
+                    this.setProcessing(false);
+                },
+                options
+            );
+        }, 50);
     }
 
     zoomIn() {
@@ -989,41 +1032,45 @@ export class CadViewer {
         const matchedParts = this.getMatchedParts();
         const matchedIds = new Set(matchedParts.map(p => p.id));
 
-        // Sidebar DOM filter & 3D Canvas updates (ignoring tree parents)
-        this.state.parts.forEach((part) => {
-            const isVisible = matchedIds.has(part.id);
+        this.setProcessing(true, 'Filtering parts... Please wait');
+        setTimeout(() => {
+            // Sidebar DOM filter & 3D Canvas updates (ignoring tree parents)
+            this.state.parts.forEach((part) => {
+                const isVisible = matchedIds.has(part.id);
 
-            const partEl = popup.querySelector(`.part-item-modern[data-part-id="${part.id}"]`);
-            if (partEl) {
-                partEl.style.display = isVisible ? '' : 'none';
+                const partEl = popup.querySelector(`.part-item-modern[data-part-id="${part.id}"]`);
+                if (partEl) {
+                    partEl.style.display = isVisible ? '' : 'none';
+                }
+
+                // Sync 3D Canvas visibility
+                part.visible = isVisible;
+                const obj = this.originalModel.getObjectByProperty('uuid', part.id);
+                if (obj) obj.visible = isVisible;
+
+                const btn = this.container.querySelector(`.btn-vis[data-part-id="${part.id}"]`);
+                if (btn) {
+                    btn.className = `btn-vis ${isVisible ? 'active' : ''}`;
+                    const icon = btn.querySelector('i');
+                    if (icon) icon.className = `fa ${isVisible ? 'fa-eye' : 'fa-eye-slash'}`;
+                }
+            });
+
+            this.rebuildMergedModel();
+
+            const matchCountSpan = popup.querySelector('#matching_count');
+            if (matchCountSpan) {
+                matchCountSpan.innerText = matchedParts.length;
             }
 
-            // Sync 3D Canvas visibility
-            part.visible = isVisible;
-            const obj = this.originalModel.getObjectByProperty('uuid', part.id);
-            if (obj) obj.visible = isVisible;
-
-            const btn = this.container.querySelector(`.btn-vis[data-part-id="${part.id}"]`);
-            if (btn) {
-                btn.className = `btn-vis ${isVisible ? 'active' : ''}`;
-                const icon = btn.querySelector('i');
-                if (icon) icon.className = `fa ${isVisible ? 'fa-eye' : 'fa-eye-slash'}`;
+            const clearBtn = popup.querySelector('.clear-search-btn');
+            if (clearBtn) {
+                clearBtn.style.opacity = this.state.searchQuery ? '0.6' : '0';
+                clearBtn.style.pointerEvents = this.state.searchQuery ? 'auto' : 'none';
             }
-        });
-
-        this.rebuildMergedModel();
-
-        const matchCountSpan = popup.querySelector('#matching_count');
-        if (matchCountSpan) {
-            matchCountSpan.innerText = matchedParts.length;
-        }
-
-        const clearBtn = popup.querySelector('.clear-search-btn');
-        if (clearBtn) {
-            clearBtn.style.opacity = this.state.searchQuery ? '0.6' : '0';
-            clearBtn.style.pointerEvents = this.state.searchQuery ? 'auto' : 'none';
-        }
-        this.updatePaintGlobalUI();
+            this.updatePaintGlobalUI();
+            this.setProcessing(false);
+        }, 50);
     }
 
     // UI Rendering & Updates
@@ -1079,14 +1126,6 @@ export class CadViewer {
                             <i class="fa fa-download"></i>
                         </button>
                     </div>
-
-                    <div class="divider"></div>
-
-                    <div class="btn-group">
-                        <button class="btn btn-dark tool-btn close-btn" title="Exit Viewer">
-                            <i class="fa fa-times-circle"></i>
-                        </button>
-                    </div>
                 </div>
 
                 <div id="loader-container"></div>
@@ -1104,9 +1143,33 @@ export class CadViewer {
         this.container.querySelector('.tool-btn-refresh').onclick = () => this.resetView();
         this.container.querySelector('.tool-btn-snapshot').onclick = () => this.takeSnapshot();
         this.container.querySelector('.tool-btn-download').onclick = () => this.downloadModel();
-        this.container.querySelector('.close-btn').onclick = () => this.interruptAndClose();
+        //this.container.querySelector('.close-btn').onclick = () => this.interruptAndClose();
 
         this.updateUI();
+    }
+
+    setProcessing(isProcessing, message = 'Processing...') {
+        let loaderContainer = this.container.querySelector('#loader-container');
+        if (!loaderContainer) return;
+        if (isProcessing) {
+            loaderContainer.innerHTML = `
+                <div class="o_stp_glass_loader">
+                    <div class="glass-orb"><div class="inner-spin"></div></div>
+                    <div class="loader-text text-center">
+                        <h2>3d Model Viewer</h2>
+                        <div class="progress-bar-container"><div class="progress-fill" style="width: 100%; animation: none;"></div></div>
+                        <p>${message}</p>
+                    </div>
+                </div>
+            `;
+            loaderContainer.style.display = 'flex';
+        } else {
+            if (this.state.loading_model) {
+                this.updateUI();
+            } else {
+                loaderContainer.innerHTML = '';
+            }
+        }
     }
 
     updateUI() {
@@ -1156,10 +1219,10 @@ export class CadViewer {
                                 </div>                            
                             </div>
                             <div class="int_ext_met">
-                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('int')?'selected':''}" data-term="int">Internal</button>
-                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('ext')?'selected':''}" data-term="ext">External</button>
-                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('met')?'selected':''}" data-term="met">MetalParts</button>
-                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('others')?'selected':''}" data-term="others">Others</button>
+                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('int') ? 'selected' : ''}" data-term="int">Internal</button>
+                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('ext') ? 'selected' : ''}" data-term="ext">External</button>
+                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('met') ? 'selected' : ''}" data-term="met">MetalParts</button>
+                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('others') ? 'selected' : ''}" data-term="others">Others</button>
                             </div>
                             <div class="matching-parts-count">
                                 <span id="matching_count">${matchingCount}</span> of <span id="total_parts">${this.state.parts.length}</span> parts matched
@@ -1381,15 +1444,15 @@ export class CadViewer {
             btn.onclick = (ev) => {
                 const target = ev.target;
                 target.classList.toggle('selected');
-                
+
                 const terms = [];
                 container.querySelectorAll('.btn_filter.selected').forEach(b => {
                     terms.push(b.dataset.term);
                 });
-                
+
                 const searchKeyword = terms.join('+');
                 if (search_input) search_input.value = searchKeyword;
-                
+
                 self.providePartsSearch(searchKeyword, null);
             };
         });
@@ -1397,8 +1460,8 @@ export class CadViewer {
 }
 
 (function () {
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log(998989, 'cad viewer loaded');
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log(344443333333333, 'cad viewer page loaded');
         const root = document.getElementById('cad-viewer-root');
         let attachment_id = findQueryParam('file_id');
         let filename = findQueryParam('filename');
@@ -1412,82 +1475,105 @@ export class CadViewer {
             file_url += `?t=${new Date().getTime()}`;
         }
 
-        const viewer = new CadViewer(root, file_url, {
-            onClose: () => {
-                window.parent.postMessage('close_step_viewer', '*');
-            }
-        });
-
         let product_id = findQueryParam('product_id');
         let line_id = findQueryParam('line_id');
         let access_token = findQueryParam('access_token');
         let hide_save = findQueryParam('hide_save');
-        if ((product_id || line_id) && !hide_save) {
-            function addToCartSaveModelBtn() {
-                const btn = document.createElement('button');
-                btn.className = 'btn btn-dark tool-btn tool-btn-save';
-                btn.title = 'Save 3D Model';
-                btn.innerHTML = '<i class="fa fa-save"></i>';
-                document.querySelector('.o_stp_bottom_toolbar .tool-btn-download').after(btn);
 
-                btn.onclick = () => {
-                    console.log('Generating GLB for save...');
-                    const exporter = new GLTFExporter();
-                    exporter.parse(viewer.originalModel, (result) => {
-                        let binary = '';
-                        let bytes = new Uint8Array(result);
-                        for (let i = 0; i < bytes.byteLength; i++) {
-                            binary += String.fromCharCode(bytes[i]);
-                        }
-                        const base64ModelData = window.btoa(binary);
-
-                        async function saveToOdoo() {
-                            console.log('Saving this model to Odoo...');
-                            try {
-                                let url = '/step_file_viewer/save_sale_model';
-                                let bodyData = { model_data: base64ModelData };
-
-                                if (product_id) bodyData.product_id = product_id;
-                                if (line_id) bodyData.line_id = line_id;
-                                if (access_token) bodyData.access_token = access_token;
-
-                                const response = await fetch(url, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Accept': 'application/json',
-                                    },
-                                    body: JSON.stringify(bodyData)
-                                });
-                                if (response.ok) {
-                                    const responseJSON = await response.json();
-                                    console.log(responseJSON, 'responseJSON');
-                                    if (responseJSON.error) {
-                                        alert(responseJSON.error.message);
-                                        return;
-                                    }
-                                    const responseData = responseJSON.result;
-                                    console.log(responseData, 'responseData');
-                                    if (responseData.status === 'success') {
-                                        window.parent.location.reload();
-                                    } else {
-                                        alert('Error saving model 1: ' + responseData.status + ' - ' + responseData.message);
-                                    }
-                                } else {
-                                    alert('Error saving model 2: ' + response.status + ' - ' + response.statusText);
-                                }
-                            } catch (error) {
-                                alert('Error saving model 3: ' + error);
-                            }
-                        }
-                        saveToOdoo();
-                    }, (error) => {
-                        console.error('Export error:', error);
-                    }, { binary: true, onlyVisible: true });
-                };
-            }
-            addToCartSaveModelBtn();
+        let customizationData = null;
+        if (line_id) {
+            try {
+                let url = '/step_file_viewer/get_customization';
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ params: { line_id: line_id, access_token: access_token } })
+                });
+                if (response.ok) {
+                    const responseJSON = await response.json();
+                    if (responseJSON.result && responseJSON.result.status === 'success' && responseJSON.result.customization_json) {
+                        customizationData = JSON.parse(responseJSON.result.customization_json);
+                    }
+                }
+            } catch (e) { console.error('Error fetching customization', e); }
         }
+
+        const viewer = new CadViewer(root, file_url, {
+            onClose: () => {
+                window.parent.postMessage('close_step_viewer', '*');
+            },
+            customization: customizationData
+        });
+
+        if ((!product_id && !line_id) || hide_save) {
+            console.log(998989, 'save to cart button should not show');
+            return;
+        }
+
+        async function saveToOdoo(customizationJSON, dt1) {
+            try {
+                let url = '/step_file_viewer/save_sale_model';
+
+                let bodyData = { customization_json: customizationJSON };
+                if (product_id) bodyData.product_id = product_id;
+                if (line_id) bodyData.line_id = line_id;
+                if (access_token) bodyData.access_token = access_token;
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ params: bodyData })
+                });
+                if (response.ok) {
+                    const responseJSON = await response.json();
+                    let dt3 = Date.now();
+                    console.log(666, `Finished saving model to Odoo in ${dt3 - dt1}ms`);
+
+                    if (responseJSON.error) {
+                        alert("Error from server => " + responseJSON.error.message);
+                        return;
+                    }
+                    const responseData = responseJSON.result;
+                    if (responseData && responseData.status === 'success') {
+                        window.parent.location.reload();
+                    } else {
+                        alert('Error ' + (responseData ? responseData.status : '') + ' - ' + (responseData ? responseData.message : 'Unknown error'));
+                    }
+                } else {
+                    alert('HTTP Response Status ' + response.status + ' - ' + response.statusText);
+                }
+            } catch (error) {
+                alert('Error saving model: ' + error);
+            }
+        }
+        function addToCartSaveModelBtn() {
+            const saveFinishedModelBtn = document.createElement('button');
+            saveFinishedModelBtn.className = 'btn btn-dark tool-btn tool-btn-save-finished';
+            saveFinishedModelBtn.title = 'Save Finished 3D Model';
+            saveFinishedModelBtn.innerHTML = '<i class="fa fa-save"></i>';
+            document.querySelector('.o_stp_bottom_toolbar .tool-btn-download').after(saveFinishedModelBtn);
+
+            saveFinishedModelBtn.onclick = () => {
+                viewer.setProcessing(true, 'Saving Customizations...');
+                setTimeout(() => {
+                    let dt1 = Date.now();
+                    const modifications = viewer.state.parts.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        color: p.color,
+                        visible: p.visible
+                    }));
+                    const customizationJSON = JSON.stringify({ parts: modifications });
+                    saveToOdoo(customizationJSON, dt1).finally(() => {
+                        viewer.setProcessing(false);
+                    });
+                }, 50);
+            };
+        }
+        addToCartSaveModelBtn();
 
     });
 })();

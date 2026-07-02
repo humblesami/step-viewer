@@ -6,9 +6,9 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='order_line']/list//field[@name='name']" position="after">
-                <field name="finished_client_model" optional="show" string="Finished Model" widget="many2one_3d_viewer"/>
-                <field name="is_model_modified" column_invisible="True"/>
-                <button name="action_restore_original_model" type="object" string="Restore" icon="fa-undo" invisible="not is_model_modified" title="Restore Original Model"/>
+                <field name="product_step_file_id" column_invisible="True"/>
+                <field name="model_customization_json" optional="show" string="Finished Model" widget="many2one_3d_viewer"/>
+                <button name="action_restore_original_model" type="object" string="Restore" icon="fa-undo" invisible="not model_customization_json" title="Restore Original Model"/>
             </xpath>
         </field>
     </record>

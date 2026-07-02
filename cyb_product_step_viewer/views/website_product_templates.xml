@@ -26,18 +26,19 @@
 
             <t t-set="cart_lines" t-value="request.cart and request.cart.order_line.filtered(lambda l: l.product_id.id == product.id) or False"/>
             <t t-set="active_line" t-value="cart_lines and cart_lines[0] or False"/>
-            <t t-set="finished_model" t-value="active_line and active_line.finished_client_model or False"/>
-            <t t-if="finished_model">
+            <t t-set="is_customized" t-value="active_line and active_line.model_customization_json or False"/>
+            <t t-if="is_customized">
                 <div class="step_files_container mb-3">
                     <h6 class="text-muted mb-2">Finished Model:</h6>
                     <div class="d-flex flex-wrap gap-2">
                         <button type="button"
                                 class="btn btn-outline-success btn-sm step-file-trigger"
-                                t-att-data-attachment-id="finished_model.id"
+                                t-att-data-attachment-id="product.step_file_id.id"
                                 t-att-data-product-id="product.id"
-                                t-att-data-filename="finished_model.name">
+                                t-att-data-line-id="active_line.id"
+                                t-att-data-filename="'Finished_' + product.step_file_id.name">
                             <i class="fa fa-pencil-square-o me-1"></i>
-                            <span t-esc="finished_model.name"/>
+                            <span t-esc="'Finished ' + product.step_file_id.name"/>
                         </button>
                     </div>
                 </div>
@@ -58,19 +59,19 @@
 
     <template id="sale_order_portal_content_inherit_step_viewer" inherit_id="sale.sale_order_portal_content">
         <xpath expr="//td[@name='td_product_name']" position="inside">
-            <t t-if="line.finished_client_model">
+            <t t-if="line.product_id.step_file_id">
                 <div class="mt-2">
                     <button type="button"
                             class="btn btn-primary btn-sm step-file-trigger"
-                            t-att-data-attachment-id="line.finished_client_model.id"
+                            t-att-data-attachment-id="line.product_id.step_file_id.id"
                             t-att-data-product-id="line.product_id.id"
                             t-att-data-line-id="line.id"
                             t-att-data-access-token="sale_order.access_token"
-                            t-att-data-filename="line.finished_client_model.name">
+                            t-att-data-filename="line.product_id.step_file_id.name">
                         <i class="fa fa-cube me-1"></i>
                         Finish model
                     </button>
-                    <button t-if="line.is_model_modified"
+                    <button t-if="line.model_customization_json"
                             type="button"
                             class="btn btn-outline-warning btn-sm restore-model-trigger"
                             t-att-data-line-id="line.id"

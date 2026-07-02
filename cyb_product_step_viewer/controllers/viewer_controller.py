@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
+import json
+import base64
 from odoo import http
 from odoo.http import request
 
 class ProductStepViewerController(http.Controller):
 
-    @http.route('/step_file_viewer/restore_original_model', type='jsonrpc', auth="public", methods=['POST'], website=True, csrf=False)
-    def restore_original_model(self):
+    @http.route('/step_file_viewer/restore_original_model', type='jsonrpc', auth="public", website=True, csrf=False)
+    def restore_original_model(self, **kwargs):
         try:
-            data = request.httprequest.json
-            line_id = data.get('line_id')
-            access_token = data.get('access_token')
+            line_id = kwargs.get('line_id')
+            access_token = kwargs.get('access_token')
 
             if not line_id:
                 return {'status': 'error', 'message': 'Missing line id'}
@@ -22,12 +23,8 @@ class ProductStepViewerController(http.Controller):
                 if sale_order_line.order_id.access_token != access_token:
                      return {'status': 'error', 'message': 'Invalid access token'}
 
-            if sale_order_line.product_id.step_file_id and sale_order_line.finished_client_model:
-                original = sale_order_line.product_id.step_file_id
-                sale_order_line.finished_client_model.sudo().write({
-                    'datas': original.datas,
-                    'name': f'Finished_Model_{sale_order_line.id}_{original.name}',
-                })
+            if sale_order_line.product_id.step_file_id:
+                sale_order_line.sudo().write({'model_customization_json': False})
                 return {'status': 'success'}
                 
             return {'status': 'error', 'message': 'No original model found'}
@@ -35,14 +32,34 @@ class ProductStepViewerController(http.Controller):
             return {'status': 'error', 'message': str(e)}
 
 
-    @http.route('/step_file_viewer/save_sale_model', type='jsonrpc', auth="public", methods=['POST'], website=True, csrf=False)
-    def save_sale_model(self):
+    @http.route('/step_file_viewer/get_customization', type='jsonrpc', auth="public", website=True, csrf=False)
+    def get_customization(self, **kwargs):
         try:
-            data = request.httprequest.json
-            model_data = data.get('model_data')
-            product_id = data.get('product_id')
-            passed_line_id = data.get('line_id')
-            access_token = data.get('access_token')
+            line_id = kwargs.get('line_id')
+            access_token = kwargs.get('access_token')
+
+            if not line_id:
+                return {'status': 'error', 'message': 'Missing line id'}
+
+            sale_order_line = request.env['sale.order.line'].sudo().browse(int(line_id))
+            if not sale_order_line.exists():
+                return {'status': 'error', 'message': 'Invalid line id'}
+            
+            if not request.env.user.has_group('base.group_user') and access_token:
+                if sale_order_line.order_id.access_token != access_token:
+                     return {'status': 'error', 'message': 'Invalid access token'}
+
+            return {'status': 'success', 'customization_json': sale_order_line.model_customization_json}
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/step_file_viewer/save_sale_model', type='jsonrpc', auth="public", website=True, csrf=False)
+    def save_sale_model(self, **kwargs):
+        try:
+            customization_json = kwargs.get('customization_json')
+            product_id = kwargs.get('product_id')
+            passed_line_id = kwargs.get('line_id')
+            access_token = kwargs.get('access_token')
 
             sale_order_line = None
 
@@ -69,21 +86,7 @@ class ProductStepViewerController(http.Controller):
             if not sale_order_line:
                 return {'status': 'error', 'message': 'Could not get line id'}
 
-            if sale_order_line.finished_client_model:
-                sale_order_line.finished_client_model.sudo().write({'datas': model_data})
-            else:
-                attachment = request.env['ir.attachment'].sudo().create({
-                    'name': f'Finished_Model_{sale_order_line.id}.glb',
-                    'datas': model_data,
-                    'res_model': 'sale.order.line',
-                    'res_id': sale_order_line.id,
-                    'type': 'binary',
-                    'mimetype': 'model/gltf-binary',
-                    'public': True,
-                })
-                sale_order_line.write({
-                    'finished_client_model': attachment.id,
-                })
+            sale_order_line.sudo().write({'model_customization_json': customization_json})
 
             return {'status': 'success', 'message': 'Model saved successfully'}
         except Exception as e:
