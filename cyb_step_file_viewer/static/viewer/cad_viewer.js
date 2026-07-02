@@ -455,8 +455,12 @@ export class CadViewer {
     scheduleRebuild(delay = 500) {
         if (this.rebuildTimeout) clearTimeout(this.rebuildTimeout);
         this.rebuildTimeout = setTimeout(() => {
-            this.rebuildMergedModel();
-            this.rebuildTimeout = null;
+            this.setProcessing(true, 'Updating 3D Model...');
+            setTimeout(() => {
+                this.rebuildMergedModel();
+                this.rebuildTimeout = null;
+                this.setProcessing(false);
+            }, 500);
         }, delay);
     }
 
@@ -580,47 +584,50 @@ export class CadViewer {
     }
 
     updateSetting(key, value) {
-        if (key === 'ambientIntensity') {
-            this.settings.lighting.ambientIntensity = parseFloat(value);
-            this.lights.ambientLight.intensity = parseFloat(value) * 1.2;
-        }
-        if (key === 'mainIntensity') {
-            const val = parseFloat(value);
-            this.settings.lighting.mainIntensity = val;
-            this.lights.mainLight.intensity = val;
-            this.lights.fillLight.intensity = val * 0.7;
-            this.lights.backLight.intensity = val * 0.5;
-            this.lights.topLight.intensity = val * 0.4;
-            this.lights.bottomLight.intensity = val * 0.4;
-        }
-        if (key === 'hemiIntensity') {
-            this.settings.lighting.hemiIntensity = parseFloat(value);
-            this.lights.hemiLight.intensity = parseFloat(value);
-        }
-        if (key === 'exposure') {
-            this.settings.lighting.exposure = parseFloat(value);
-            this.renderer.toneMappingExposure = parseFloat(value);
-        }
+        this.setProcessing(true, 'Updating Rendering...');
+        setTimeout(() => {
+            if (key === 'ambientIntensity') {
+                this.settings.lighting.ambientIntensity = parseFloat(value);
+                this.lights.ambientLight.intensity = parseFloat(value) * 1.2;
+            }
+            if (key === 'mainIntensity') {
+                const val = parseFloat(value);
+                this.settings.lighting.mainIntensity = val;
+                this.lights.mainLight.intensity = val;
+                this.lights.fillLight.intensity = val * 0.7;
+                this.lights.backLight.intensity = val * 0.5;
+                this.lights.topLight.intensity = val * 0.4;
+                this.lights.bottomLight.intensity = val * 0.4;
+            }
+            if (key === 'hemiIntensity') {
+                this.settings.lighting.hemiIntensity = parseFloat(value);
+                this.lights.hemiLight.intensity = parseFloat(value);
+            }
+            if (key === 'exposure') {
+                this.settings.lighting.exposure = parseFloat(value);
+                this.renderer.toneMappingExposure = parseFloat(value);
+            }
 
-        if (key === 'bgColor') {
-            this.settings.bgColor = value;
-            this.scene.background.set(value);
-        }
+            if (key === 'bgColor') {
+                this.settings.bgColor = value;
+                this.scene.background.set(value);
+            }
 
-        if (key === 'edgeColor' || key === 'edgeOpacity') {
-            const color = new THREEModules.Color(this.settings.edgeColor);
-            const opacity = parseFloat(this.settings.edgeOpacity);
-            this.edgeObjects.forEach(edge => {
-                if (edge.material) {
-                    edge.material.color.copy(color);
-                    edge.material.opacity = opacity;
-                }
-            });
-        }
-
-        this.needsRender = true;
-        this.resumeRendering();
-        localStorage.setItem('stp_viewer_settings', JSON.stringify(this.settings));
+            if (key === 'edgeColor' || key === 'edgeOpacity') {
+                const color = new THREEModules.Color(this.settings.edgeColor);
+                const opacity = parseFloat(this.settings.edgeOpacity);
+                this.edgeObjects.forEach(edge => {
+                    if (edge.material) {
+                        edge.material.color.copy(color);
+                        edge.material.opacity = opacity;
+                    }
+                });
+            }
+            this.needsRender = true;
+            this.resumeRendering();
+            localStorage.setItem('stp_viewer_settings', JSON.stringify(this.settings));
+            this.setProcessing(false);
+        }, 20);
     }
 
     onMouseMove(e) {
@@ -740,52 +747,14 @@ export class CadViewer {
         if (this.colorDebounceTimeout) clearTimeout(this.colorDebounceTimeout);
 
         const apply = () => {
-            const matchedParts = this.getMatchedParts();
-            const matchedIds = new Set(matchedParts.map(p => p.id));
+            this.setProcessing(true, 'Applying Color...');
+            setTimeout(() => {
+                const matchedParts = this.getMatchedParts();
+                const matchedIds = new Set(matchedParts.map(p => p.id));
 
-            matchedParts.forEach(part => {
-                part.color = color;
-                const obj = this.originalModel.getObjectByProperty('uuid', part.id);
-                if (obj) {
-                    obj.traverse((node) => {
-                        if (node.isMesh) {
-                            const oldMat = node.material;
-                            node.material = node.material.clone();
-                            node.material.color.set(color);
-                            if (oldMat) oldMat.dispose();
-                        }
-                    });
-                }
-            });
-
-            const pickers = this.container.querySelectorAll('.part-color-picker');
-            pickers.forEach(p => {
-                if (matchedIds.has(p.dataset.partId)) p.value = color;
-            });
-            this.rebuildMergedModel();
-            this.resumeRendering();
-        };
-
-        if (immediate) {
-            apply();
-        } else {
-            this.colorDebounceTimeout = setTimeout(apply, 2000);
-        }
-    }
-
-    onColorChange(ev, partId, immediate = false) {
-        const color = ev.target.value;
-        if (this.colorDebounceTimeout) clearTimeout(this.colorDebounceTimeout);
-
-        const apply = () => {
-            const part = this.state.parts.find(p => p.id === partId);
-            if (part) {
-                const idsToColor = [partId, ...this.getDescendantIds(partId)];
-                idsToColor.forEach(id => {
-                    const p = this.state.parts.find(x => x.id === id);
-                    if (p) p.color = color;
-
-                    const obj = this.originalModel.getObjectByProperty('uuid', id);
+                matchedParts.forEach(part => {
+                    part.color = color;
+                    const obj = this.originalModel.getObjectByProperty('uuid', part.id);
                     if (obj) {
                         obj.traverse((node) => {
                             if (node.isMesh) {
@@ -796,17 +765,63 @@ export class CadViewer {
                             }
                         });
                     }
-
-                    const picker = this.container.querySelector(`.part-color-picker[data-part-id="${id}"]`);
-                    if (picker) picker.value = color;
                 });
-            }
-            this.rebuildMergedModel();
-            this.resumeRendering();
+
+                const pickers = this.container.querySelectorAll('.part-color-picker');
+                pickers.forEach(p => {
+                    if (matchedIds.has(p.dataset.partId)) p.value = color;
+                });
+                this.rebuildMergedModel();
+                this.resumeRendering();
+                this.setProcessing(false);
+            }, 50);
+        };
+
+        if (immediate) {
+            apply();
+        } else {
+            this.colorDebounceTimeout = setTimeout(apply, 1000);
+        }
+    }
+
+    onColorChange(ev, partId, immediate = false) {
+        const color = ev.target.value;
+        if (this.colorDebounceTimeout) clearTimeout(this.colorDebounceTimeout);
+
+        const apply = () => {
+            this.setProcessing(true, 'Applying Color...');
+            setTimeout(() => {
+                const part = this.state.parts.find(p => p.id === partId);
+                if (part) {
+                    const idsToColor = [partId, ...this.getDescendantIds(partId)];
+                    idsToColor.forEach(id => {
+                        const p = this.state.parts.find(x => x.id === id);
+                        if (p) p.color = color;
+
+                        const obj = this.originalModel.getObjectByProperty('uuid', id);
+                        if (obj) {
+                            obj.traverse((node) => {
+                                if (node.isMesh) {
+                                    const oldMat = node.material;
+                                    node.material = node.material.clone();
+                                    node.material.color.set(color);
+                                    if (oldMat) oldMat.dispose();
+                                }
+                            });
+                        }
+
+                        const picker = this.container.querySelector(`.part-color-picker[data-part-id="${id}"]`);
+                        if (picker) picker.value = color;
+                    });
+                }
+                this.rebuildMergedModel();
+                this.resumeRendering();
+                this.setProcessing(false);
+            }, 50);
         };
 
         if (immediate) apply();
-        else this.colorDebounceTimeout = setTimeout(apply, 2000);
+        else this.colorDebounceTimeout = setTimeout(apply, 1000);
     }
 
     toggleVisibility(ev, partId) {
