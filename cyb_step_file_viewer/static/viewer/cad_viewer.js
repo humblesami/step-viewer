@@ -692,7 +692,7 @@ export class CadViewer {
         if (this.colorDebounceTimeout) clearTimeout(this.colorDebounceTimeout);
 
         const apply = () => {
-            const matchedParts = this.getVisibleParts();
+            const matchedParts = this.getMatchedParts();
             const matchedIds = new Set(matchedParts.map(p => p.id));
 
             matchedParts.forEach(part => {
@@ -931,128 +931,41 @@ export class CadViewer {
     }
 
     getMatchedParts() {
-        if (!this.state.searchQuery) {
-            return this.state.parts;
+        const query = this.state.searchQuery === undefined || this.state.searchQuery === null ? 'int+ext+met+others' : this.state.searchQuery;
+        if (!query) {
+            return [];
         }
 
-        const terms = (this.state.searchQuery || '').toLowerCase().split('+').filter(t => t);
-        const directMatches = new Set();
+        const terms = query.toLowerCase().split('+').filter(t => t);
 
-        this.state.parts.forEach(part => {
+        return this.state.parts.filter(part => {
             const partNameLower = part.name.toLowerCase();
             let matches = false;
             if (terms.length > 0) {
                 for (const term of terms) {
-                    if (partNameLower.includes(term)) {
-                        matches = true;
-                        break;
+                    if (term === 'others') {
+                        if (!partNameLower.includes('int') && !partNameLower.includes('ext') && !partNameLower.includes('met')) {
+                            matches = true;
+                            break;
+                        }
+                    } else {
+                        if (partNameLower.includes(term)) {
+                            matches = true;
+                            break;
+                        }
                     }
                 }
+            } else {
+                matches = true;
             }
-            if (matches) directMatches.add(part.id);
+            return matches;
         });
-
-        const finalMatches = new Set();
-        const addAncestors = (partId) => {
-            const part = this.state.parts.find(p => p.id === partId);
-            if (part && part.parentId) {
-                finalMatches.add(part.parentId);
-                addAncestors(part.parentId);
-            }
-        };
-        const addDescendants = (partId) => {
-            const descendants = this.getDescendantIds(partId);
-            descendants.forEach(dId => finalMatches.add(dId));
-        };
-        directMatches.forEach(id => {
-            finalMatches.add(id);
-            addAncestors(id);
-            addDescendants(id);
-        });
-
-        return this.state.parts.filter(p => finalMatches.has(p.id));
-    }
-
-    getVisibleParts() {
-        const view_mode = this.state.viewMode || 'show_all';
-        if (!this.state.searchQuery || view_mode === 'show_all') {
-            return this.state.parts;
-        }
-
-        const matchedParts = this.getMatchedParts();
-        if (view_mode === 'show_matches') {
-            return matchedParts;
-        } else {
-            // show_others
-            const matchedIds = new Set(matchedParts.map(p => p.id));
-            return this.state.parts.filter(p => !matchedIds.has(p.id));
-        }
-    }
-
-    applyViewFilters() {
-        if (!this.state.searchQuery) {
-            this.state.viewMode = 'show_all';
-        }
-
-        const visibleParts = this.getVisibleParts();
-        const visibleIds = new Set(visibleParts.map(p => p.id));
-
-        // 1. Update 3D Canvas and Eye Icons
-        this.state.parts.forEach(part => {
-            const isVisible = visibleIds.has(part.id);
-            part.visible = isVisible; // keep state in sync
-            const obj = this.originalModel.getObjectByProperty('uuid', part.id);
-            if (obj) obj.visible = isVisible;
-
-            const btn = this.container.querySelector(`.btn-vis[data-part-id="${part.id}"]`);
-            if (btn) {
-                btn.className = `btn-vis ${isVisible ? 'active' : ''}`;
-                const icon = btn.querySelector('i');
-                if (icon) icon.className = `fa ${isVisible ? 'fa-eye' : 'fa-eye-slash'}`;
-            }
-        });
-
-        this.rebuildMergedModel();
-
-        // 2. Update UI Texts & Paint Picker Count
-        const view_mode = this.state.viewMode || 'show_all';
-        let statusText = '';
-        if (!this.state.searchQuery) {
-            statusText = 'This feature is enabled when you are looking for specific types of parts.';
-        } else if (view_mode === 'show_matches') {
-            statusText = `Showing matched parts`;
-        } else if (view_mode === 'show_others') {
-            statusText = `Showing non-matching parts`;
-        } else {
-            statusText = `Showing All parts`;
-        }
-
-        const popup = this.container.querySelector('.o_stp_parts_popup');
-        if (popup) {
-            const shownTextEl = popup.querySelector('.shown_parts_text');
-            if (shownTextEl) shownTextEl.innerText = statusText;
-
-            const paintLabel = popup.querySelector('.global-paint-row .part-name-text');
-            if (paintLabel) {
-                const count = visibleParts.length;
-                paintLabel.innerText = `Paint ${count} Shown Parts`;
-            }
-
-            const togglerContainer = popup.querySelector('.matching_others_all_parts');
-            if (togglerContainer) {
-                const selected = togglerContainer.querySelector('.btn.selected');
-                if (selected) selected.classList.remove('selected');
-                if (view_mode === 'show_matches') togglerContainer.querySelector('.btn_match')?.classList.add('selected');
-                else if (view_mode === 'show_others') togglerContainer.querySelector('.btn_others')?.classList.add('selected');
-                else togglerContainer.querySelector('.btn_all')?.classList.add('selected');
-            }
-        }
     }
 
     updatePaintGlobalUI() {
         const paintLabel = this.container.querySelector('.global-paint-row .part-name-text');
         if (paintLabel) {
-            const count = this.getVisibleParts().length;
+            const count = this.getMatchedParts().length;
             paintLabel.innerText = `Paint ${count} Shown Parts`;
         }
     }
@@ -1066,39 +979,34 @@ export class CadViewer {
         const matchedParts = this.getMatchedParts();
         const matchedIds = new Set(matchedParts.map(p => p.id));
 
-        // 1. Sidebar DOM filter for matched parts only (tree intact)
+        // Sidebar DOM filter & 3D Canvas updates (ignoring tree parents)
         this.state.parts.forEach((part) => {
+            const isVisible = matchedIds.has(part.id);
+
             const partEl = popup.querySelector(`.part-item-modern[data-part-id="${part.id}"]`);
             if (partEl) {
-                let isCollapsedByParent = false;
-                let currParent = this.state.parts.find(p => p.id === part.parentId);
-                while (currParent) {
-                    if (!currParent.expanded) {
-                        isCollapsedByParent = true;
-                        break;
-                    }
-                    currParent = this.state.parts.find(p => p.id === currParent.parentId);
-                }
-                partEl.style.display = (matchedIds.has(part.id) && !isCollapsedByParent) ? '' : 'none';
+                partEl.style.display = isVisible ? '' : 'none';
+            }
+
+            // Sync 3D Canvas visibility
+            part.visible = isVisible;
+            const obj = this.originalModel.getObjectByProperty('uuid', part.id);
+            if (obj) obj.visible = isVisible;
+
+            const btn = this.container.querySelector(`.btn-vis[data-part-id="${part.id}"]`);
+            if (btn) {
+                btn.className = `btn-vis ${isVisible ? 'active' : ''}`;
+                const icon = btn.querySelector('i');
+                if (icon) icon.className = `fa ${isVisible ? 'fa-eye' : 'fa-eye-slash'}`;
             }
         });
+
+        this.rebuildMergedModel();
 
         const matchCountSpan = popup.querySelector('#matching_count');
         if (matchCountSpan) {
             matchCountSpan.innerText = matchedParts.length;
         }
-
-        const partsActions = popup.querySelector('.parts-list-actions');
-        if (partsActions) {
-            if (!this.state.searchQuery) {
-                partsActions.classList.add('disabled-filter');
-            } else {
-                partsActions.classList.remove('disabled-filter');
-            }
-        }
-
-        // Ensure 3D and UI text are updated according to view mode
-        this.applyViewFilters();
 
         const clearBtn = popup.querySelector('.clear-search-btn');
         if (clearBtn) {
@@ -1219,21 +1127,10 @@ export class CadViewer {
         if (this.state.showSidebar) {
             const matchedParts = this.getMatchedParts();
             const matchedIds = new Set(matchedParts.map(p => p.id));
-            const view_mode = this.state.viewMode || 'show_all';
+            const query = this.state.searchQuery === undefined || this.state.searchQuery === null ? 'int+ext+met+others' : this.state.searchQuery;
             const matchingCount = matchedParts.length;
-            let statusText = '';
 
-            if (!this.state.searchQuery) {
-                statusText = 'This feature is enabled when you are looking for specific types of parts.';
-            } else if (view_mode === 'show_matches') {
-                statusText = `Showing matched parts`;
-            } else if (view_mode === 'show_others') {
-                statusText = `Showing non-matching parts`;
-            } else {
-                statusText = `Showing All parts`;
-            }
-
-            const noun = matchingCount < this.state.parts.length ? `${matchingCount} Matched` : 'All';
+            const noun = matchingCount < this.state.parts.length ? `${matchingCount} Shown Parts` : 'All Shown Parts';
             popoversHtml += `
                 <div class="popover o_stp_parts_popup">
                     <div class="sidebar-header">
@@ -1242,32 +1139,21 @@ export class CadViewer {
                     </div>
                     <div class="sidebar-action-box">
                         <div class="search-filters-bar">
-                            <div class="part-search-box">
+                            <div class="part-search-box" style="display: none;">
                                 <div class="part-search-input-container">
                                     <i class="fa fa-search" style="opacity: 0.6; margin-right: 8px; color: #fff;"></i>
-                                    <input type="text" class="form-control part-search-input" placeholder="Search parts (e.g. bolt -bracket)..." value="${this.state.searchQuery || ''}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; padding-right: 10px; box-shadow: none;">
+                                    <input type="text" class="form-control part-search-input" placeholder="Search parts..." value="${query}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; padding-right: 10px; box-shadow: none;">
                                 </div>                            
                             </div>
                             <div class="int_ext_met">
-                                <button class="btn btn-sm btn-primary btn_int">Internal</button>
-                                <button class="btn btn-sm btn-primary btn_ext">External</button>
-                                <button class="btn btn-sm btn-primary btn_met">MetalParts</button>
-                                <button class="btn btn-sm btn-primary btn_all selected">All</button>
+                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('int')?'selected':''}" data-term="int">Internal</button>
+                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('ext')?'selected':''}" data-term="ext">External</button>
+                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('met')?'selected':''}" data-term="met">MetalParts</button>
+                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('others')?'selected':''}" data-term="others">Others</button>
                             </div>
                             <div class="matching-parts-count">
                                 <span id="matching_count">${matchingCount}</span> of <span id="total_parts">${this.state.parts.length}</span> parts matched
                             </div>
-                        </div>
-
-                        <div class="parts-list-actions ${!this.state.searchQuery ? 'disabled-filter' : ''}">
-                            <div class="matching_others_all_parts">
-                                <button class="btn btn-sm btn-primary btn_match ${view_mode === 'show_matches' ? 'selected' : ''}">Show Matches</button>
-                                <button class="btn btn-sm btn-primary btn_others ${view_mode === 'show_others' ? 'selected' : ''}">Show Others</button>
-                                <button class="btn btn-sm btn-primary btn_all ${view_mode === 'show_all' ? 'selected' : ''}">Show All</button>
-                            </div>
-                            <div class="shown_parts_text" style="color:white; font-size:13px;">
-                                ${statusText}
-                            </div>                            
                         </div>
                         <div class="part-item-modern global-paint-row">
                             <div class="part-actions" style="margin-right: 5px;">
@@ -1368,7 +1254,6 @@ export class CadViewer {
         popoversContainer.innerHTML = popoversHtml;
         if (popoversHtml) {
             this.init_group_search();
-            this.init_parts_toggeling();
         }
 
         // Bind popover events
@@ -1477,66 +1362,27 @@ export class CadViewer {
 
     init_group_search() {
         const self = this;
-        const groups_btn_container = document.querySelector('.o_stp_preview_container .int_ext_met');
-        if (!groups_btn_container) {
-            console.warn('groups btn container not found');
-            return;
-        }
+        const container = document.querySelector('.o_stp_preview_container .int_ext_met');
+        if (!container) return;
+
         const search_input = document.querySelector('.o_stp_preview_container .part-search-input');
-        if (!search_input) {
-            console.warn('search_input not found');
-            return;
-        }
 
-        function doPartsSearch(btn, searchKeyword) {
-            groups_btn_container.querySelector('.btn.selected').classList.remove('selected');
-            btn.classList.add('selected');
-            search_input.value = searchKeyword;
-            self.providePartsSearch(searchKeyword, null);
-        }
-        groups_btn_container.querySelector('.btn_int').onclick = (ev) => {
-            doPartsSearch(ev.target, 'int');
-        };
-        groups_btn_container.querySelector('.btn_ext').onclick = (ev) => {
-            doPartsSearch(ev.target, 'ext');
-        };
-        groups_btn_container.querySelector('.btn_met').onclick = (ev) => {
-            doPartsSearch(ev.target, 'met');
-        };
-        groups_btn_container.querySelector('.btn_all').onclick = (ev) => {
-            doPartsSearch(ev.target, '');
-        };
-
-        console.log(3434, 'grouo search enabled');
-    }
-
-    init_parts_toggeling() {
-        const self = this;
-        const toggler_container = document.querySelector('.o_stp_preview_container .matching_others_all_parts');
-        if (!toggler_container) {
-            console.warn('toggler btn container not found');
-            return;
-        }
-
-        function showHideParts(btn, show_parts_type) {
-            console.log(456456, 'showHideParts', btn, show_parts_type);
-            if (self.state.searchQuery) {
-                self.state.viewMode = show_parts_type;
-                self.applyViewFilters();
-            }
-        }
-
-        toggler_container.querySelector('.btn_all').onclick = (ev) => {
-            showHideParts(ev.target, 'show_all');
-        };
-        toggler_container.querySelector('.btn_match').onclick = (ev) => {
-            showHideParts(ev.target, 'show_matches');
-        };
-        toggler_container.querySelector('.btn_others').onclick = (ev) => {
-            showHideParts(ev.target, 'show_others');
-        };
-
-        console.log(3434, 'group toggeling enabled');
+        container.querySelectorAll('.btn_filter').forEach(btn => {
+            btn.onclick = (ev) => {
+                const target = ev.target;
+                target.classList.toggle('selected');
+                
+                const terms = [];
+                container.querySelectorAll('.btn_filter.selected').forEach(b => {
+                    terms.push(b.dataset.term);
+                });
+                
+                const searchKeyword = terms.join('+');
+                if (search_input) search_input.value = searchKeyword;
+                
+                self.providePartsSearch(searchKeyword, null);
+            };
+        });
     }
 }
 
