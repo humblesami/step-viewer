@@ -421,7 +421,7 @@ export class CadViewer {
         const all_parts = [];
 
         const traverse = (node, level, parentId) => {
-            if (node.isMesh || node.isLineSegments) return;
+            if (node.isMesh || node.isLineSegments || !node.visible) return;
 
             // Only treat nodes created by our Python script as actual structural nodes.
             const isStructural = node.name && node.name !== 'Scene' && node.name !== 'RootAssembly';
@@ -692,7 +692,7 @@ export class CadViewer {
         if (this.colorDebounceTimeout) clearTimeout(this.colorDebounceTimeout);
 
         const apply = () => {
-            const matchedParts = this.getMatchedParts();
+            const matchedParts = this.getVisibleParts();
             const matchedIds = new Set(matchedParts.map(p => p.id));
 
             matchedParts.forEach(part => {
@@ -952,21 +952,113 @@ export class CadViewer {
             if (matches) directMatches.add(part.id);
         });
 
-        return this.state.parts.filter(p => this.state.invertSearch ? !directMatches.has(p.id) : directMatches.has(p.id));
+        const finalMatches = new Set();
+        const addAncestors = (partId) => {
+            const part = this.state.parts.find(p => p.id === partId);
+            if (part && part.parentId) {
+                finalMatches.add(part.parentId);
+                addAncestors(part.parentId);
+            }
+        };
+        const addDescendants = (partId) => {
+            const descendants = this.getDescendantIds(partId);
+            descendants.forEach(dId => finalMatches.add(dId));
+        };
+        directMatches.forEach(id => {
+            finalMatches.add(id);
+            addAncestors(id);
+            addDescendants(id);
+        });
+
+        return this.state.parts.filter(p => finalMatches.has(p.id));
+    }
+
+    getVisibleParts() {
+        const view_mode = this.state.viewMode || 'show_all';
+        if (!this.state.searchQuery || view_mode === 'show_all') {
+            return this.state.parts;
+        }
+
+        const matchedParts = this.getMatchedParts();
+        if (view_mode === 'show_matches') {
+            return matchedParts;
+        } else {
+            // show_others
+            const matchedIds = new Set(matchedParts.map(p => p.id));
+            return this.state.parts.filter(p => !matchedIds.has(p.id));
+        }
+    }
+
+    applyViewFilters() {
+        if (!this.state.searchQuery) {
+            this.state.viewMode = 'show_all';
+        }
+
+        const visibleParts = this.getVisibleParts();
+        const visibleIds = new Set(visibleParts.map(p => p.id));
+
+        // 1. Update 3D Canvas and Eye Icons
+        this.state.parts.forEach(part => {
+            const isVisible = visibleIds.has(part.id);
+            part.visible = isVisible; // keep state in sync
+            const obj = this.originalModel.getObjectByProperty('uuid', part.id);
+            if (obj) obj.visible = isVisible;
+
+            const btn = this.container.querySelector(`.btn-vis[data-part-id="${part.id}"]`);
+            if (btn) {
+                btn.className = `btn-vis ${isVisible ? 'active' : ''}`;
+                const icon = btn.querySelector('i');
+                if (icon) icon.className = `fa ${isVisible ? 'fa-eye' : 'fa-eye-slash'}`;
+            }
+        });
+
+        this.rebuildMergedModel();
+
+        // 2. Update UI Texts & Paint Picker Count
+        const view_mode = this.state.viewMode || 'show_all';
+        let statusText = '';
+        if (!this.state.searchQuery) {
+            statusText = 'This feature is enabled when you are looking for specific types of parts.';
+        } else if (view_mode === 'show_matches') {
+            statusText = `Showing matched parts`;
+        } else if (view_mode === 'show_others') {
+            statusText = `Showing non-matching parts`;
+        } else {
+            statusText = `Showing All parts`;
+        }
+
+        const popup = this.container.querySelector('.o_stp_parts_popup');
+        if (popup) {
+            const shownTextEl = popup.querySelector('.shown_parts_text');
+            if (shownTextEl) shownTextEl.innerText = statusText;
+
+            const paintLabel = popup.querySelector('.global-paint-row .part-name-text');
+            if (paintLabel) {
+                const count = visibleParts.length;
+                paintLabel.innerText = `Paint ${count} Shown Parts`;
+            }
+
+            const togglerContainer = popup.querySelector('.matching_others_all_parts');
+            if (togglerContainer) {
+                const selected = togglerContainer.querySelector('.btn.selected');
+                if (selected) selected.classList.remove('selected');
+                if (view_mode === 'show_matches') togglerContainer.querySelector('.btn_match')?.classList.add('selected');
+                else if (view_mode === 'show_others') togglerContainer.querySelector('.btn_others')?.classList.add('selected');
+                else togglerContainer.querySelector('.btn_all')?.classList.add('selected');
+            }
+        }
     }
 
     updatePaintGlobalUI() {
         const paintLabel = this.container.querySelector('.global-paint-row .part-name-text');
         if (paintLabel) {
-            const matchedCount = this.getMatchedParts().length;
-            const totalCount = this.state.parts.length;
-            paintLabel.innerText = matchedCount < totalCount ? `Paint ${matchedCount} Matched` : `Paint All`;
+            const count = this.getVisibleParts().length;
+            paintLabel.innerText = `Paint ${count} Shown Parts`;
         }
     }
 
     providePartsSearch(query, invert = null) {
         if (query !== null) this.state.searchQuery = query;
-        if (invert !== null) this.state.invertSearch = invert;
 
         const popup = this.container.querySelector('.o_stp_parts_popup');
         if (!popup) return;
@@ -974,6 +1066,7 @@ export class CadViewer {
         const matchedParts = this.getMatchedParts();
         const matchedIds = new Set(matchedParts.map(p => p.id));
 
+        // 1. Sidebar DOM filter for matched parts only (tree intact)
         this.state.parts.forEach((part) => {
             const partEl = popup.querySelector(`.part-item-modern[data-part-id="${part.id}"]`);
             if (partEl) {
@@ -990,19 +1083,28 @@ export class CadViewer {
             }
         });
 
-        const countEl = popup.querySelector('.matching-parts-count');
-        if (countEl) {
-            countEl.innerText = `${matchedParts.length} of ${this.state.parts.length} parts matched`;
+        const matchCountSpan = popup.querySelector('#matching_count');
+        if (matchCountSpan) {
+            matchCountSpan.innerText = matchedParts.length;
         }
+
+        const partsActions = popup.querySelector('.parts-list-actions');
+        if (partsActions) {
+            if (!this.state.searchQuery) {
+                partsActions.classList.add('disabled-filter');
+            } else {
+                partsActions.classList.remove('disabled-filter');
+            }
+        }
+
+        // Ensure 3D and UI text are updated according to view mode
+        this.applyViewFilters();
 
         const clearBtn = popup.querySelector('.clear-search-btn');
         if (clearBtn) {
             clearBtn.style.opacity = this.state.searchQuery ? '0.6' : '0';
             clearBtn.style.pointerEvents = this.state.searchQuery ? 'auto' : 'none';
         }
-
-        // const globalBtn = popup.querySelector('.global-toggle-btn');
-        // if (globalBtn) this.updateGlobalToggleUI(globalBtn, this.globalVisibilityState);
         this.updatePaintGlobalUI();
     }
 
@@ -1117,15 +1219,15 @@ export class CadViewer {
         if (this.state.showSidebar) {
             const matchedParts = this.getMatchedParts();
             const matchedIds = new Set(matchedParts.map(p => p.id));
-            const viewMode = this.state.viewMode || 'show_all';
+            const view_mode = this.state.viewMode || 'show_all';
             const matchingCount = matchedParts.length;
             let statusText = '';
 
             if (!this.state.searchQuery) {
                 statusText = 'This feature is enabled when you are looking for specific types of parts.';
-            } else if (viewMode === 'show_matches') {
+            } else if (view_mode === 'show_matches') {
                 statusText = `Showing matched parts`;
-            } else if (viewMode === 'show_others') {
+            } else if (view_mode === 'show_others') {
                 statusText = `Showing non-matching parts`;
             } else {
                 statusText = `Showing All parts`;
@@ -1140,7 +1242,7 @@ export class CadViewer {
                     </div>
                     <div class="sidebar-action-box">
                         <div class="search-filters-bar">
-                            <div class="part-search-box" style="margin-bottom: 12px; padding: 0 8px;">
+                            <div class="part-search-box">
                                 <div class="part-search-input-container">
                                     <i class="fa fa-search" style="opacity: 0.6; margin-right: 8px; color: #fff;"></i>
                                     <input type="text" class="form-control part-search-input" placeholder="Search parts (e.g. bolt -bracket)..." value="${this.state.searchQuery || ''}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; padding-right: 10px; box-shadow: none;">
@@ -1157,11 +1259,11 @@ export class CadViewer {
                             </div>
                         </div>
 
-                        <div class="parts-list-actions">
+                        <div class="parts-list-actions ${!this.state.searchQuery ? 'disabled-filter' : ''}">
                             <div class="matching_others_all_parts">
-                                <button class="btn btn-sm btn-primary btn_match ${viewMode === 'show_matches' ? 'selected' : ''}">Show Matches</button>
-                                <button class="btn btn-sm btn-primary btn_others ${viewMode === 'show_others' ? 'selected' : ''}">Show Others</button>
-                                <button class="btn btn-sm btn-primary btn_all ${viewMode === 'show_all' ? 'selected' : ''}">Show All</button>
+                                <button class="btn btn-sm btn-primary btn_match ${view_mode === 'show_matches' ? 'selected' : ''}">Show Matches</button>
+                                <button class="btn btn-sm btn-primary btn_others ${view_mode === 'show_others' ? 'selected' : ''}">Show Others</button>
+                                <button class="btn btn-sm btn-primary btn_all ${view_mode === 'show_all' ? 'selected' : ''}">Show All</button>
                             </div>
                             <div class="shown_parts_text" style="color:white; font-size:13px;">
                                 ${statusText}
@@ -1417,9 +1519,10 @@ export class CadViewer {
         }
 
         function showHideParts(btn, show_parts_type) {
+            console.log(456456, 'showHideParts', btn, show_parts_type);
             if (self.state.searchQuery) {
                 self.state.viewMode = show_parts_type;
-                self.renderPopovers();
+                self.applyViewFilters();
             }
         }
 

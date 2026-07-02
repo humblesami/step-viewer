@@ -3,8 +3,7 @@ import re
 import json
 import cadquery as cq
 
-from OCP.TopoDS import TopoDS_Shape, TopoDS_Iterator
-from OCP.TopAbs import TopAbs_SOLID, TopAbs_SHELL, TopAbs_COMPSOLID, TopAbs_COMPOUND
+from OCP.TopoDS import TopoDS_Shape
 from OCP.TDataStd import TDataStd_Name
 from OCP.TopLoc import TopLoc_Location
 from OCP.Quantity import Quantity_Color
@@ -16,13 +15,12 @@ from OCP.STEPCAFControl import STEPCAFControl_Reader
 from OCP.TCollection import TCollection_ExtendedString
 from OCP.XCAFDoc import XCAFDoc_DocumentTool, XCAFDoc_ColorType
 
-# Regex to detect standard UUIDs
-UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
+
 
 def convert_step_to_glb_with_names(step_file_path: str, output_glb_path: str) -> dict:
     """
-    Extracts true names/colors, strips out UUIDs, collapses single-child chains,
-    and directly attaches shapes to prevent CadQuery naming collisions.
+    Extracts true names/colors using OCP XCAF, applies absolute 3D locations,
+    and exports a flat, UI-friendly GLB using CadQuery's native exporter.
     """
     # ── 1. Init XDE App & Read STEP ───────────────────────────────────────────
     app = XCAFApp_Application.GetApplication_s()
@@ -40,164 +38,95 @@ def convert_step_to_glb_with_names(step_file_path: str, output_glb_path: str) ->
     shape_tool = XCAFDoc_DocumentTool.ShapeTool_s(doc.Main())
     color_tool = XCAFDoc_DocumentTool.ColorTool_s(doc.Main())
 
-    # Mutable state for global uniqueness
-    counter = {"n": 0}
-    flat_manifest = {}  
+    parts_data = []  # Stores (sanitized_name, original_name, cq_shape, color_rgba)
 
-    # ── 2. Top-Down Recursive Processor ───────────────────────────────────────
-    def process_label(
-        label: TDF_Label, 
-        parent_assy: cq.Assembly, 
-        parent_tree: dict, 
-        loc: TopLoc_Location, 
-        parent_name: str, 
-        inherited_color=None
-    ):
-        own_color = _label_color(color_tool, label)
-        effective_color = own_color or inherited_color
-
-        # Scrub UUIDs and inherit parent name if empty/UUID
-        raw_name = _label_name(label)
-        if not raw_name or UUID_PATTERN.match(raw_name.strip()):
-            raw_name = f"{parent_name}_Part"
-
-        idx = counter["n"]
-        counter["n"] += 1
-        node_name = _sanitize(raw_name, idx)
-
+    # ── 2. Walk Tree and Calculate Absolute 3D Positions ──────────────────────
+    def walk(label: TDF_Label, parent_loc: TopLoc_Location, parent_color=None):
         components = TDF_LabelSequence()
         is_assembly = shape_tool.GetComponents_s(label, components, False)
 
-        # ✨ USER RULE APPLIED: Collapse 1-child assemblies into leaf parts
-        if is_assembly and components.Size() == 1:
-            is_assembly = False
+        # Check if current node has an override color
+        curr_color = _label_color(color_tool, label) or parent_color
 
         if is_assembly and components.Size() > 0:
-            # Create sub-assembly container
-            node = cq.Assembly(name=node_name)
-            tree_node = {
-                "name": node_name,
-                "original_name": raw_name,
-                "type": "assembly",
-                "children": []
-            }
-
             for i in range(1, components.Size() + 1):
                 comp_label = components.Value(i)
+
+                # Accumulate exact 3D location matrix
                 comp_loc = shape_tool.GetLocation_s(comp_label)
-                inst_color = _label_color(color_tool, comp_label) or effective_color
+                absolute_loc = parent_loc.Multiplied(comp_loc)
+
+                inst_color = _label_color(color_tool, comp_label) or curr_color
 
                 referred = TDF_Label()
                 if shape_tool.GetReferredShape_s(comp_label, referred):
-                    target_label = referred
+                    walk(referred, absolute_loc, inst_color)
                 else:
-                    target_label = comp_label
-
-                process_label(target_label, node, tree_node, comp_loc, node_name, inst_color)
-
-            # Attach fully built sub-assembly to parent
-            parent_assy.add(node, loc=cq.Location(loc))
-            parent_tree["children"].append(tree_node)
-
+                    walk(comp_label, absolute_loc, inst_color)
         else:
-            # Leaf node processing
+            # Leaf node reached - extract actual geometry
             topo = TopoDS_Shape()
             shape_tool.GetShape_s(label, topo)
-            solids = _get_solids(topo)
 
-            cq_color = cq.Color(effective_color[0], effective_color[1], effective_color[2], 1.0) if effective_color else None
+            if topo.IsNull():
+                return
 
-            if solids:
-                if len(solids) == 1:
-                    # Single solid -> Add directly as a shape (No wrapper folder)
-                    cq_shape = cq.Shape.cast(solids[0])
-                    parent_assy.add(cq_shape, name=node_name, color=cq_color, loc=cq.Location(loc))
-                    
-                    parent_tree["children"].append({
-                        "name": node_name,
-                        "original_name": raw_name,
-                        "type": "part"
-                    })
-                    flat_manifest[node_name] = raw_name
+            # Move shape to its absolute world coordinates
+            world_topo = topo.Moved(parent_loc)
 
-                else:
-                    # Multiple solids clumped -> Create a wrapper folder just for these solids
-                    node = cq.Assembly(name=node_name)
-                    tree_node = {
-                        "name": node_name,
-                        "original_name": raw_name,
-                        "type": "part",
-                        "children": []
-                    }
+            # Wrap standard OCP shape back into a CadQuery shape
+            cq_shape = cq.Shape.cast(world_topo)
 
-                    for s_idx, solid in enumerate(solids):
-                        solid_name = f"{node_name}_Solid_{s_idx + 1:03d}"
-                        cq_shape = cq.Shape.cast(solid)
-                        # Local location applied at the wrapper level, so shapes stay at 0,0 relative to it
-                        node.add(cq_shape, name=solid_name, color=cq_color)
-                        
-                        tree_node["children"].append({
-                            "name": solid_name,
-                            "original_name": f"{raw_name}_Solid_{s_idx + 1}",
-                            "type": "part"
-                        })
-                        flat_manifest[solid_name] = f"{raw_name}_Solid_{s_idx + 1}"
+            name = _label_name(label) or f"Part_{len(parts_data) + 1:03d}"
+            final_color = _label_color(color_tool, label) or curr_color
 
-                    parent_assy.add(node, loc=cq.Location(loc))
-                    parent_tree["children"].append(tree_node)
+            idx = len(parts_data)
+            node_name = _sanitize(name, idx)
+            parts_data.append((node_name, name, cq_shape, final_color))
 
-    # ── 3. Build top-level ────────────────────────────────────────────────────
-    root_assy = cq.Assembly(name="Scene")
-    hierarchy = {"name": "Scene", "type": "assembly", "children": []}
-
+    # Start walk from root assembly
     free_labels = TDF_LabelSequence()
     shape_tool.GetFreeShapes(free_labels)
+    identity_loc = TopLoc_Location()
 
     for i in range(1, free_labels.Size() + 1):
-        label = free_labels.Value(i)
-        root_loc = shape_tool.GetLocation_s(label)
-        process_label(label, root_assy, hierarchy, root_loc, "Assembly", None)
+        walk(free_labels.Value(i), identity_loc)
 
-    print(f"Extracted {len(flat_manifest)} individual parts.")
+    print(f"Extracted {len(parts_data)} correctly positioned parts.")
 
-    # ── 4. Export ─────────────────────────────────────────────────────────────
-    print(f"Exporting GLB to {output_glb_path}...")
-    root_assy.save(output_glb_path, "GLTF", tolerance=1.2, angularTolerance=0.8, write_binary=True)
+    # ── 3. Build & Export Native CadQuery Assembly ────────────────────────────
+    assy = cq.Assembly(name="RootAssembly")
+    manifest = {}
 
+    for node_name, original_name, cq_shape, color in parts_data:
+        if color:
+            # CadQuery Color expects RGB in 0.0 - 1.0 range
+            cq_color = cq.Color(color[0], color[1], color[2], 1.0)
+            assy.add(cq_shape, name=node_name, color=cq_color)
+        else:
+            assy.add(cq_shape, name=node_name)
+
+        manifest[node_name] = original_name
+
+    print(f"Exporting precise GLB to {output_glb_path}...")
+    assy.save(output_glb_path, "GLTF", tolerance=1.2, angularTolerance=0.8, write_binary=True)
+
+    # Write Sidecar JSON Manifest for your JS UI clustering
     manifest_path = output_glb_path.replace(".glb", "_parts.json")
     with open(manifest_path, "w") as f:
         json.dump({
             "source": os.path.basename(step_file_path),
-            "total_parts": len(flat_manifest),
-            "parts": flat_manifest,
-            "hierarchy": hierarchy,
+            "total_parts": len(manifest),
+            "parts": manifest
         }, f, indent=2)
 
-    return flat_manifest
+    final_size = os.path.getsize(output_glb_path) / (1024 * 1024)
+    print(f"Success! Final Size: {final_size:.2f} MB")
+
+    return manifest
 
 
-# ── Helpers ─────────────────────────────────────────────────────────────────
-def _get_solids(shape: TopoDS_Shape) -> list:
-    """Recursively extracts individual solids/shells from a TopoDS_Compound."""
-    solids = []
-    if shape.IsNull():
-        return solids
-        
-    stype = shape.ShapeType()
-    if stype in (TopAbs_SOLID, TopAbs_SHELL, TopAbs_COMPSOLID):
-        solids.append(shape)
-    elif stype == TopAbs_COMPOUND:
-        it = TopoDS_Iterator(shape)
-        while it.More():
-            solids.extend(_get_solids(it.Value()))
-            it.Next()
-    else:
-        # Fallback for faces/edges if no solids are present
-        solids.append(shape)
-        
-    return solids
-
-
+# ── Helpers (Same as before) ──────────────────────────────────────────────────
 def _label_name(label: TDF_Label) -> str:
     try:
         attr = TDataStd_Name()
@@ -212,7 +141,7 @@ def _label_color(color_tool, label: TDF_Label):
     try:
         col = Quantity_Color()
         for c_type in [
-                XCAFDoc_ColorType.XCAFDoc_ColorSurf, 
+                XCAFDoc_ColorType.XCAFDoc_ColorSurf,
                 XCAFDoc_ColorType.XCAFDoc_ColorGen,
                 XCAFDoc_ColorType.XCAFDoc_ColorCurv
             ]:
@@ -225,5 +154,5 @@ def _label_color(color_tool, label: TDF_Label):
 
 def _sanitize(name: str, idx: int) -> str:
     s = re.sub(r"[^\w\-]", "_", name.strip())
-    s = re.sub(r"_+", "_", s).strip("_")
+    s = re.sub(r"_+", "_", s).strip("_") or f"Part_{idx + 1:03d}"
     return f"{s}_{idx + 1:03d}"
