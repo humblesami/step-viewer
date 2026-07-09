@@ -122,7 +122,69 @@ export class CadViewer {
         this.init();
     }
 
+    checkIfGraphicsAccelerationEnabled() {
+
+        function showGuide() {
+            function copyUrl() {
+                const urlInput = document.getElementById("chrome-url");
+                urlInput.select();
+                urlInput.setSelectionRange(0, 99999); /* For mobile devices */
+
+                navigator.clipboard.writeText(urlInput.value).then(() => {
+                    alert("Copied to clipboard! Paste this into a new tab.");
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                });
+            }
+            const threeContainer = document.getElementById("cad-viewer-root");
+            threeContainer.innerHTML = `
+            <div class="acceleration-guide" 
+                style="color:white; padding: 20px; font-size:20px">
+                <h3>Enable Hardware Acceleration</h3>
+                
+                <ol>
+                    <li>Copy this link to your clipboard:</li>
+                        <div class="copy-box" style="margin:10px;">
+                            <input type="text" 
+                            style="width: 400px;font-size:20px; color:black" id="chrome-url"
+                            value="chrome://settings/?search=acceleration" readonly>
+                            <button id="copy-url-btn" style="cursor:pointer">Copy Link</button>
+                        </div>
+                    <li>Open a new tab in Chrome.</li>
+                    <li>Paste the link into the address bar and press <strong>Enter</strong>.</li>
+                    <li>Toggle <strong>"Use graphics acceleration when available"</strong> to ON and relaunch Chrome.</li>
+                </ol>
+            </div>
+            `;
+            document.getElementById('copy-url-btn').addEventListener('click', copyUrl);
+        }
+
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl');
+            if (!gl) {
+                showGuide();
+                return false;
+            }
+            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+
+            if (!debugInfo) showGuide();
+            else {
+                console.log(debugInfo, 'WEBGL debug renderer_info');
+            }
+            return debugInfo;
+        } catch (e) {
+            showGuide();
+            return false;
+        }
+    }
+
     init() {
+        console.log("Checking graphics acceleration")
+        if (!this.checkIfGraphicsAccelerationEnabled()) {
+            return;
+        }
+
         this.bindEvents();
         this.renderUI();
         this.initThree();
@@ -1476,7 +1538,6 @@ export class CadViewer {
 
 (function () {
     document.addEventListener('DOMContentLoaded', async () => {
-        console.log(344443333333333, 'cad viewer page loaded');
         const root = document.getElementById('cad-viewer-root');
         let attachment_id = findQueryParam('file_id');
         let filename = findQueryParam('filename');
@@ -1521,7 +1582,6 @@ export class CadViewer {
         });
 
         if ((!product_id && !line_id) || hide_save) {
-            console.log(998989, 'save to cart button should not show');
             return;
         }
 
