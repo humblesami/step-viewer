@@ -23,13 +23,13 @@
 }
 
 .o_stp_preview_container .popover.o_stp_parts_popup {
-    width: 320px;
     display: flex;
     flex-direction: column;
     resize: horizontal;
     overflow: hidden;
-    min-width: 300px;
-    max-width: 800px;
+    min-width: 10vw;
+    max-width: 50vw;
+    overflow-x: auto;
 }
 
 .popup-section input[type="range"] {
@@ -248,5 +248,5 @@
 }
 
 .o_stp_preview_container .part-search-input-container {
-    display: none;
+    /* display: none; */
 }

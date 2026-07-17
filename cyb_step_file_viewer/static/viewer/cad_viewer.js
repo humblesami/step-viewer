@@ -180,7 +180,6 @@ export class CadViewer {
     }
 
     init() {
-        console.log("Checking graphics acceleration")
         if (!this.checkIfGraphicsAccelerationEnabled()) {
             return;
         }
@@ -425,7 +424,6 @@ export class CadViewer {
                 this.animate();
 
                 this.updateUI();
-                console.log('Bottom toolbar is hidden');
                 const bottom_toolbar = document.querySelector('.o_stp_bottom_toolbar');
                 if (bottom_toolbar) {
                     bottom_toolbar.style.display = 'flex';
@@ -751,12 +749,6 @@ export class CadViewer {
             this.state.showLightsPopup = false;
             changed = true;
         }
-        // const sidebar = document.querySelector('.o_stp_parts_popup');
-        // const sidebarBtn = document.querySelector('.tool-btn-sidebar');
-        // if (this.state.showSidebar && sidebar && !sidebar.contains(ev.target) && sidebarBtn && !sidebarBtn.contains(ev.target)) {
-        //     this.state.showSidebar = false;
-        //     changed = true;
-        // }
         if (changed) {
             this.updateUI();
         }
@@ -1223,6 +1215,7 @@ export class CadViewer {
         //this.container.querySelector('.close-btn').onclick = () => this.interruptAndClose();
 
         this.updateUI();
+        this.toggleSidebar();
     }
 
     setProcessing(isProcessing, message = 'Processing...') {
@@ -1289,7 +1282,7 @@ export class CadViewer {
                     </div>
                     <div class="sidebar-action-box">
                         <div class="search-filters-bar">
-                            <div class="part-search-box" style="display: none;">
+                            <div class="part-search-box">
                                 <div class="part-search-input-container">
                                     <i class="fa fa-search" style="opacity: 0.6; margin-right: 8px; color: #fff;"></i>
                                     <input type="text" class="form-control part-search-input" placeholder="Search parts..." value="${query}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; padding-right: 10px; box-shadow: none;">
@@ -1429,8 +1422,12 @@ export class CadViewer {
                 const handleSearch = (e) => {
                     this.providePartsSearch(e.target.value, null);
                 };
-                searchInput.oninput = handleSearch;
-                searchInput.onkeyup = handleSearch;
+                // searchInput.oninput = handleSearch;
+                searchInput.onkeyup = function (e) {
+                    if (e.keyCode === 13) {
+                        handleSearch(e);
+                    }
+                }
             }
 
             const clearBtn = popoversContainer.querySelector('.clear-search-btn');
@@ -1469,6 +1466,32 @@ export class CadViewer {
             const newSidebarContent = popoversContainer.querySelector('.sidebar-content');
             if (newSidebarContent) {
                 newSidebarContent.scrollTop = sidebarScrollTop;
+            }
+
+            // Resizing Observer
+            if (this.partsPopupObserver) {
+                this.partsPopupObserver.disconnect();
+            }
+
+            const stp_parts_popup = popoversContainer.querySelector('.popover.o_stp_parts_popup');
+            if (stp_parts_popup) {
+                // Apply saved width or fallback to 25vw
+                const savedWidth = localStorage.getItem('left_popup_width');
+                if (savedWidth && savedWidth !== '0px') {
+                    stp_parts_popup.style.width = savedWidth.endsWith('px') || savedWidth.endsWith('vw') ? savedWidth : savedWidth + 'px';
+                } else {
+                    stp_parts_popup.style.width = '25vw';
+                }
+
+                this.partsPopupObserver = new ResizeObserver((entries) => {
+                    for (let entry of entries) {
+                        const width_val = Math.round(entry.target.getBoundingClientRect().width);
+                        if (width_val >= 100) {
+                            localStorage.setItem('left_popup_width', width_val + 'px');
+                        }
+                    }
+                });
+                this.partsPopupObserver.observe(stp_parts_popup);
             }
         }
 
@@ -1649,6 +1672,5 @@ export class CadViewer {
             };
         }
         addToCartSaveModelBtn();
-
     });
 })();
