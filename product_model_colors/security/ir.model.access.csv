@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_colors_template,colors.template,model_colors_template,base.group_user,1,1,1,1
+access_template_colors_values,template.color.values,model_template_colors_values,base.group_user,1,1,1,1
+access_product_model_colors,product_model.colors,model_product_model_colors,base.group_user,1,1,1,1

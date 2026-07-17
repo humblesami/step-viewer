@@ -4,6 +4,7 @@
     'summary': "3D Model Rendering for Product Attached Models",
     'author': 'cybat',
     'depends': ['website_sale', 'cyb_step_file_viewer'],
+# 'depends': ['website_sale', 'cyb_step_file_viewer', 'product_model_colors'],
     'data': [
         'views/product_product_views.xml',
         'views/website_product_templates.xml',
