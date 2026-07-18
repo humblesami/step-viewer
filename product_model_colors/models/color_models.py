@@ -36,13 +36,16 @@ class ProductTemplate(models.Model):
     def create_product_colors(self, pid, tmpl_id):
         color_vals = self.env['template.colors.values'].search_read([('template_id', '=',tmpl_id)],
                                                                     fields=['color_value'])
+        self.env['product_model.colors'].search([('product_tmpl_id', '=', pid)]).unlink()
         values = []
         for cv in color_vals:
-            values.push({'product_tmpl_id': pid, 'color_value': cv['color_value']})
+            values.append({'product_tmpl_id': pid, 'color_value': cv['color_value']})
         self.env['product_model.colors'].create(values)
 
     def fetch_product_colors(self):
         if not self.model_colors:
-            tid = self.color_template_id.id or self.env.ref('demo_template').id
-            self.create_product_colors(self.id, tid)
-        return self.model_colors
+            ref_tid = self.env.ref('product_model_colors.demo_template_1', raise_if_not_found=False)
+            tid = self.color_template_id.id or (ref_tid.id if ref_tid else False)
+            if tid:
+                self.create_product_colors(self.id, tid)
+        return [c.color_value for c in self.model_colors] if self.model_colors else []

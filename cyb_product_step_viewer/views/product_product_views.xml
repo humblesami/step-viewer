@@ -27,8 +27,8 @@
                         <div class="d-flex align-items-center gap-3">
                             <field name="step_file_content" widget="binary" filename="step_file_name" nolabel="1"/>
                             <field name="step_file_id" widget="many2one_3d_viewer" nolabel="1" invisible="not step_file_id"/>
-<!--                            <field name="color_template_id" invisible="model_colors!=False"/>-->
-<!--                            <field name="model_colors" invisible="not color_template_id"/>-->
+                            <field name="color_template_id"/>
+                            <field name="model_colors" />
                         </div>
                     </group>
                 </page>

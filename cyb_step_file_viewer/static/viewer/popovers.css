@@ -250,3 +250,54 @@
 .o_stp_preview_container .part-search-input-container {
     /* display: none; */
 }
+
+/* Color Palette Popover */
+.color-palette-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    transition: transform 0.2s;
+}
+
+.color-palette-btn:hover {
+    transform: scale(1.1);
+    border-color: white;
+}
+
+.color-palette-popover {
+    position: absolute;
+    top: 30px;
+    left: 0;
+    width: 150px;
+    background: white;
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    z-index: 1000;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.color-palette-popover .color-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.color-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 1px solid rgba(0,0,0,0.2);
+    transition: transform 0.1s, border-color 0.1s;
+}
+
+.color-swatch:hover {
+    transform: scale(1.15);
+    border-color: black;
+}

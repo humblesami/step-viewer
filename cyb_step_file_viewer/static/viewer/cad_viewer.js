@@ -1299,8 +1299,16 @@ export class CadViewer {
                             </div>
                         </div>
                         <div class="part-item-modern global-paint-row">
-                            <div class="part-actions" style="margin-right: 5px;">
-                                <input type="color" class="mini-color-picker global-paint-picker" value="#ffffff">
+                            <div class="part-actions" style="margin-right: 5px; position: relative;">
+                                ${this.options.productColors && this.options.productColors.length > 0 ?
+                                `<div class="color-palette-btn" title="Choose Template Color"></div>
+                                 <div class="color-palette-popover" style="display: none;">
+                                     <div class="color-grid">
+                                         ${this.options.productColors.map(c => `<div class="color-swatch" data-color="${c}" style="background-color: ${c};" title="${c}"></div>`).join('')}
+                                     </div>
+                                 </div>` : 
+                                `<input type="color" class="mini-color-picker global-paint-picker" value="#ffffff">`
+                                }
                             </div>
                             <span class="part-name-text">Paint ${noun}</span>
                         </div>
@@ -1402,7 +1410,27 @@ export class CadViewer {
         // Bind popover events
         if (this.state.showSidebar) {
             popoversContainer.querySelector('.btn-close-sidebar').onclick = () => this.toggleSidebar();
-            popoversContainer.querySelector('.global-paint-picker').oninput = (e) => this.onGlobalColorChange(e);
+            
+            const nativeGlobalPicker = popoversContainer.querySelector('.global-paint-picker');
+            if (nativeGlobalPicker) {
+                nativeGlobalPicker.oninput = (e) => this.onGlobalColorChange(e);
+            }
+
+            const paletteBtn = popoversContainer.querySelector('.color-palette-btn');
+            const palettePopover = popoversContainer.querySelector('.color-palette-popover');
+            if (paletteBtn && palettePopover) {
+                paletteBtn.onclick = (e) => {
+                    const isHidden = palettePopover.style.display === 'none';
+                    palettePopover.style.display = isHidden ? 'block' : 'none';
+                };
+                popoversContainer.querySelectorAll('.color-swatch').forEach(swatch => {
+                    swatch.onclick = (e) => {
+                        const hex = e.currentTarget.dataset.color;
+                        this.onGlobalColorChange({ target: { value: hex } });
+                        palettePopover.style.display = 'none';
+                    };
+                });
+            }
 
             const searchInput = popoversContainer.querySelector('.part-search-input');
             if (searchInput) {
@@ -1580,18 +1608,29 @@ export class CadViewer {
         let hide_save = findQueryParam('hide_save');
 
         let customizationData = null;
-        if (line_id) {
+        let productColorsData = null;
+        if (line_id || product_id) {
             try {
                 let url = '/step_file_viewer/get_customization';
+                let req_body = {};
+                if (line_id) req_body.line_id = line_id;
+                if (product_id) req_body.product_id = product_id;
+                if (access_token) req_body.access_token = access_token;
+                
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ params: { line_id: line_id, access_token: access_token } })
+                    body: JSON.stringify({ params: req_body })
                 });
                 if (response.ok) {
                     const responseJSON = await response.json();
-                    if (responseJSON.result && responseJSON.result.status === 'success' && responseJSON.result.customization_json) {
-                        customizationData = JSON.parse(responseJSON.result.customization_json);
+                    if (responseJSON.result && responseJSON.result.status === 'success') {
+                        if (responseJSON.result.customization_json) {
+                            customizationData = JSON.parse(responseJSON.result.customization_json);
+                        }
+                        if (responseJSON.result.product_colors) {
+                            productColorsData = responseJSON.result.product_colors;
+                        }
                     }
                 }
             } catch (e) { console.error('Error fetching customization', e); }
@@ -1601,7 +1640,8 @@ export class CadViewer {
             onClose: () => {
                 window.parent.postMessage('close_step_viewer', '*');
             },
-            customization: customizationData
+            customization: customizationData,
+            productColors: productColorsData
         });
 
         if ((!product_id && !line_id) || hide_save) {

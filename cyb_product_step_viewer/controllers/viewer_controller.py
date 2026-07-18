@@ -37,19 +37,36 @@ class ProductStepViewerController(http.Controller):
         try:
             line_id = kwargs.get('line_id')
             access_token = kwargs.get('access_token')
+            product_id = kwargs.get('product_id')
 
-            if not line_id:
-                return {'status': 'error', 'message': 'Missing line id'}
+            customization_json = False
+            product_colors = []
+            product = False
 
-            sale_order_line = request.env['sale.order.line'].sudo().browse(int(line_id))
-            if not sale_order_line.exists():
-                return {'status': 'error', 'message': 'Invalid line id'}
-            
-            if not request.env.user.has_group('base.group_user') and access_token:
-                if sale_order_line.order_id.access_token != access_token:
-                     return {'status': 'error', 'message': 'Invalid access token'}
+            if line_id:
+                sale_order_line = request.env['sale.order.line'].sudo().browse(int(line_id))
+                if not sale_order_line.exists():
+                    return {'status': 'error', 'message': 'Invalid line id'}
+                if not request.env.user.has_group('base.group_user') and access_token:
+                    if sale_order_line.order_id.access_token != access_token:
+                        return {'status': 'error', 'message': 'Invalid access token'}
+                customization_json = sale_order_line.model_customization_json
+                product = sale_order_line.product_id
+            elif product_id:
+                product = request.env['product.product'].sudo().browse(int(product_id))
+                if not product.exists():
+                    return {'status': 'error', 'message': 'Invalid product id'}
+            else:
+                return {'status': 'error', 'message': 'Missing line id or product id'}
 
-            return {'status': 'success', 'customization_json': sale_order_line.model_customization_json}
+            if product and product.product_tmpl_id:
+                product_colors = product.product_tmpl_id.fetch_product_colors()
+
+            return {
+                'status': 'success', 
+                'customization_json': customization_json,
+                'product_colors': product_colors
+            }
         except Exception as e:
             return {'status': 'error', 'message': str(e)}
 
