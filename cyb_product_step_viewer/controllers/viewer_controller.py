@@ -38,10 +38,11 @@ class ProductStepViewerController(http.Controller):
             line_id = kwargs.get('line_id')
             access_token = kwargs.get('access_token')
             product_id = kwargs.get('product_id')
+            product_template_id = kwargs.get('template_id')
 
             customization_json = False
             product_colors = []
-            product = False
+            product_template = False
 
             if line_id:
                 sale_order_line = request.env['sale.order.line'].sudo().browse(int(line_id))
@@ -51,17 +52,15 @@ class ProductStepViewerController(http.Controller):
                     if sale_order_line.order_id.access_token != access_token:
                         return {'status': 'error', 'message': 'Invalid access token'}
                 customization_json = sale_order_line.model_customization_json
-                product = sale_order_line.product_id
-            elif product_id:
-                product = request.env['product.product'].sudo().browse(int(product_id))
-                if not product.exists():
-                    return {'status': 'error', 'message': 'Invalid product id'}
+                product_template = sale_order_line.product_id.product_tmpl_id
+            elif product_template_id:
+                product_template = request.env['product.template'].sudo().browse(int(product_template_id))
             else:
                 return {'status': 'error', 'message': 'Missing line id or product id'}
 
-            if product and product.product_tmpl_id:
-                product_colors = product.product_tmpl_id.fetch_product_colors()
-
+            if product_template:
+                if product_template.model_colors:
+                    product_colors = product_template.model_colors.mapped('color_value')
             return {
                 'status': 'success', 
                 'customization_json': customization_json,

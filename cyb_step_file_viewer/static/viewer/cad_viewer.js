@@ -1274,6 +1274,7 @@ export class CadViewer {
             const matchingCount = matchedParts.length;
 
             const noun = matchingCount < this.state.parts.length ? `${matchingCount} Shown Parts` : 'All Shown Parts';
+
             popoversHtml += `
                 <div class="popover o_stp_parts_popup">
                     <div class="sidebar-header">
@@ -1301,48 +1302,48 @@ export class CadViewer {
                         <div class="part-item-modern global-paint-row">
                             <div class="part-actions" style="margin-right: 5px; position: relative;">
                                 ${this.options.productColors && this.options.productColors.length > 0 ?
-                                `<div class="color-palette-btn" title="Choose Template Color"></div>
+                    `<div class="color-palette-btn" title="Choose Template Color"></div>
                                  <div class="color-palette-popover" style="display: none;">
                                      <div class="color-grid">
                                          ${this.options.productColors.map(c => `<div class="color-swatch" data-color="${c}" style="background-color: ${c};" title="${c}"></div>`).join('')}
                                      </div>
-                                 </div>` : 
-                                `<input type="color" class="mini-color-picker global-paint-picker" value="#ffffff">`
-                                }
+                                 </div>` :
+                    `<input type="color" class="mini-color-picker global-paint-picker" value="#ffffff">`
+                }
                             </div>
                             <span class="part-name-text">Paint ${noun}</span>
                         </div>
                     </div>
                     <div class="sidebar-content">
                         ${this.state.parts.map(part => {
-                const matches = matchedIds.has(part.id);
-                let isCollapsedByParent = false;
-                let currParent = this.state.parts.find(p => p.id === part.parentId);
-                while (currParent) {
-                    if (!currParent.expanded) {
-                        isCollapsedByParent = true;
-                        break;
+                    const matches = matchedIds.has(part.id);
+                    let isCollapsedByParent = false;
+                    let currParent = this.state.parts.find(p => p.id === part.parentId);
+                    while (currParent) {
+                        if (!currParent.expanded) {
+                            isCollapsedByParent = true;
+                            break;
+                        }
+                        currParent = this.state.parts.find(p => p.id === currParent.parentId);
                     }
-                    currParent = this.state.parts.find(p => p.id === currParent.parentId);
-                }
 
-                const displayStyle = (matches && !isCollapsedByParent) ? '' : 'display: none;';
-                const expanderHtml = part.isAssembly
-                    ? `<i class="fa ${part.expanded ? 'fa-caret-down' : 'fa-caret-right'} tree-expander" data-part-id="${part.id}" style="cursor: pointer; text-align: center; margin: 0 4px; color: aliceblue; font-size: 20px; padding: 5px;"></i>`
-                    : `<span style="width: 5px; display: inline-block;"></span>`;
+                    const displayStyle = (matches && !isCollapsedByParent) ? '' : 'display: none;';
+                    const expanderHtml = part.isAssembly
+                        ? `<i class="fa ${part.expanded ? 'fa-caret-down' : 'fa-caret-right'} tree-expander" data-part-id="${part.id}" style="cursor: pointer; text-align: center; margin: 0 4px; color: aliceblue; font-size: 20px; padding: 5px;"></i>`
+                        : `<span style="width: 5px; display: inline-block;"></span>`;
 
-                const nameStyle = part.isAssembly ? 'font-weight: 600;' : '';
+                    const nameStyle = part.isAssembly ? 'font-weight: 600;' : '';
 
-                let utf8Name = part.name;
-                try {
-                    // OCP/GLTF sometimes parses non-English characters as raw bytes (Latin-1).
-                    // This securely decodes those bytes back into proper UTF-8 strings.
-                    utf8Name = decodeURIComponent(escape(part.name));
-                } catch (e) {
-                    // Use original if decoding fails
-                }
+                    let utf8Name = part.name;
+                    try {
+                        // OCP/GLTF sometimes parses non-English characters as raw bytes (Latin-1).
+                        // This securely decodes those bytes back into proper UTF-8 strings.
+                        utf8Name = decodeURIComponent(escape(part.name));
+                    } catch (e) {
+                        // Use original if decoding fails
+                    }
 
-                return `
+                    return `
                     <div class="part-item-modern" data-part-id="${part.id}" style="${displayStyle} padding-left: ${part.level * 16 + 8}px;">
                         <div class="part-actions">
                             <input type="color" value="${part.color}" data-part-id="${part.id}" class="mini-color-picker part-color-picker">
@@ -1354,7 +1355,7 @@ export class CadViewer {
                         <span class="part-name-text" style="${nameStyle}" title="Volume: ${Math.round(part.volume)}">${utf8Name}</span>
                     </div>
                 `;
-            }).join('')}
+                }).join('')}
                     </div>
                 </div>
             `;
@@ -1410,7 +1411,7 @@ export class CadViewer {
         // Bind popover events
         if (this.state.showSidebar) {
             popoversContainer.querySelector('.btn-close-sidebar').onclick = () => this.toggleSidebar();
-            
+
             const nativeGlobalPicker = popoversContainer.querySelector('.global-paint-picker');
             if (nativeGlobalPicker) {
                 nativeGlobalPicker.oninput = (e) => this.onGlobalColorChange(e);
@@ -1604,19 +1605,24 @@ export class CadViewer {
 
         let product_id = findQueryParam('product_id');
         let line_id = findQueryParam('line_id');
+        let template_id = findQueryParam('template_id');
         let access_token = findQueryParam('access_token');
         let hide_save = findQueryParam('hide_save');
 
         let customizationData = null;
         let productColorsData = null;
-        if (line_id || product_id) {
+
+        if (line_id || product_id || template_id) {
             try {
                 let url = '/step_file_viewer/get_customization';
                 let req_body = {};
                 if (line_id) req_body.line_id = line_id;
                 if (product_id) req_body.product_id = product_id;
+                if (template_id) req_body.template_id = template_id;
                 if (access_token) req_body.access_token = access_token;
-                
+
+                console.log(7889, req_body);
+
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1712,5 +1718,6 @@ export class CadViewer {
             };
         }
         addToCartSaveModelBtn();
+
     });
 })();

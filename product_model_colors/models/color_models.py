@@ -43,9 +43,24 @@ class ProductTemplate(models.Model):
         self.env['product_model.colors'].create(values)
 
     def fetch_product_colors(self):
+        import logging
+        _logger = logging.getLogger(__name__)
+        _logger.info(f"Fetching colors for product.template ID: {self.id}")
+        
+        # Invalidate cache to ensure we get the latest DB values
+        self.invalidate_recordset(['model_colors'])
+        
+        _logger.info(f"Current model_colors count: {len(self.model_colors)}")
+        
         if not self.model_colors:
+            _logger.info("model_colors is empty, generating defaults...")
             ref_tid = self.env.ref('product_model_colors.demo_template_1', raise_if_not_found=False)
             tid = self.color_template_id.id or (ref_tid.id if ref_tid else False)
             if tid:
                 self.create_product_colors(self.id, tid)
-        return [c.color_value for c in self.model_colors] if self.model_colors else []
+                self.invalidate_recordset(['model_colors'])
+                _logger.info(f"Generated colors count: {len(self.model_colors)}")
+                
+        colors = [c.color_value for c in self.model_colors] if self.model_colors else []
+        _logger.info(f"Returning {len(colors)} colors: {colors}")
+        return colors

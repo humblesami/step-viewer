@@ -73,12 +73,21 @@ export class Many2One3DViewer extends Component {
         if (!attachmentId) return;
 
         let productId = null;
-        if (this.props.record.data.product_id) {
-            productId = Array.isArray(this.props.record.data.product_id) 
-                ? this.props.record.data.product_id[0] 
-                : this.props.record.data.product_id.id;
+        let lineId = null;
+        let templateId = null;
+
+        if (this.props.record.resModel === 'sale.order.line') {
+            lineId = this.props.record.resId;
+            if (this.props.record.data.product_id) {
+                productId = Array.isArray(this.props.record.data.product_id) 
+                    ? this.props.record.data.product_id[0] 
+                    : this.props.record.data.product_id.id;
+            }
+        } else if (this.props.record.resModel === 'product.product') {
+            productId = this.props.record.resId;
+        } else if (this.props.record.resModel === 'product.template') {
+            templateId = this.props.record.resId;
         }
-        const lineId = this.props.record.resId;
 
         // Build your URL matching your exact frontend logic
         const web_page = '/cyb_step_file_viewer/static/viewer/cad_viewer.html';
@@ -86,6 +95,9 @@ export class Many2One3DViewer extends Component {
 
         if (productId) {
             query_params += `&product_id=${productId}`;
+        }
+        if (templateId) {
+            query_params += `&template_id=${templateId}`;
         }
         if (lineId) {
             query_params += `&line_id=${lineId}`;
