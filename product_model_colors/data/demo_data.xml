@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="demo_template_1" model="colors.template">
+            <field name="name">Default CAD Colors</field>
+        </record>
+
+        <!-- 20 Standard CAD Colors -->
+        <record id="demo_color_1" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#808080</field> <!-- Steel Grey -->
+        </record>
+        <record id="demo_color_2" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#B5A642</field> <!-- Brass -->
+        </record>
+        <record id="demo_color_3" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#CD7F32</field> <!-- Bronze -->
+        </record>
+        <record id="demo_color_4" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#C0C0C0</field> <!-- Silver -->
+        </record>
+        <record id="demo_color_5" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#FF0000</field> <!-- Red -->
+        </record>
+        <record id="demo_color_6" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#0000FF</field> <!-- Blue -->
+        </record>
+        <record id="demo_color_7" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#00FF00</field> <!-- Green -->
+        </record>
+        <record id="demo_color_8" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#FFFF00</field> <!-- Yellow -->
+        </record>
+        <record id="demo_color_9" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#FFA500</field> <!-- Orange -->
+        </record>
+        <record id="demo_color_10" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#800080</field> <!-- Purple -->
+        </record>
+        <record id="demo_color_11" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#00FFFF</field> <!-- Cyan -->
+        </record>
+        <record id="demo_color_12" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#FF00FF</field> <!-- Magenta -->
+        </record>
+        <record id="demo_color_13" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#000000</field> <!-- Black -->
+        </record>
+        <record id="demo_color_14" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#FFFFFF</field> <!-- White -->
+        </record>
+        <record id="demo_color_15" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#A52A2A</field> <!-- Brown -->
+        </record>
+        <record id="demo_color_16" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#FFC0CB</field> <!-- Pink -->
+        </record>
+        <record id="demo_color_17" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#808000</field> <!-- Olive -->
+        </record>
+        <record id="demo_color_18" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#008080</field> <!-- Teal -->
+        </record>
+        <record id="demo_color_19" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#000080</field> <!-- Navy -->
+        </record>
+        <record id="demo_color_20" model="template.colors.values">
+            <field name="template_id" ref="demo_template_1"/>
+            <field name="color_value">#4B0082</field> <!-- Indigo -->
+        </record>
+    </data>
+</odoo>
