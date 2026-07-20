@@ -79,8 +79,8 @@ export class Many2One3DViewer extends Component {
         if (this.props.record.resModel === 'sale.order.line') {
             lineId = this.props.record.resId;
             if (this.props.record.data.product_id) {
-                productId = Array.isArray(this.props.record.data.product_id) 
-                    ? this.props.record.data.product_id[0] 
+                productId = Array.isArray(this.props.record.data.product_id)
+                    ? this.props.record.data.product_id[0]
                     : this.props.record.data.product_id.id;
             }
         } else if (this.props.record.resModel === 'product.product') {
@@ -97,7 +97,7 @@ export class Many2One3DViewer extends Component {
             query_params += `&product_id=${productId}`;
         }
         if (templateId) {
-            query_params += `&template_id=${templateId}`;
+            query_params += `&product_tmpl_id=${templateId}`;
         }
         if (lineId) {
             query_params += `&line_id=${lineId}`;

@@ -1605,20 +1605,20 @@ export class CadViewer {
 
         let product_id = findQueryParam('product_id');
         let line_id = findQueryParam('line_id');
-        let template_id = findQueryParam('template_id');
+        let product_tmpl_id = findQueryParam('product_tmpl_id');
         let access_token = findQueryParam('access_token');
         let hide_save = findQueryParam('hide_save');
 
         let customizationData = null;
         let productColorsData = null;
 
-        if (line_id || product_id || template_id) {
+        if (line_id || product_id || product_tmpl_id) {
             try {
                 let url = '/step_file_viewer/get_customization';
                 let req_body = {};
                 if (line_id) req_body.line_id = line_id;
                 if (product_id) req_body.product_id = product_id;
-                if (template_id) req_body.template_id = template_id;
+                if (product_tmpl_id) req_body.product_tmpl_id = product_tmpl_id;
                 if (access_token) req_body.access_token = access_token;
 
                 console.log(7889, req_body);

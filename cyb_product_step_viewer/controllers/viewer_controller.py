@@ -38,7 +38,7 @@ class ProductStepViewerController(http.Controller):
             line_id = kwargs.get('line_id')
             access_token = kwargs.get('access_token')
             product_id = kwargs.get('product_id')
-            product_template_id = kwargs.get('template_id')
+            product_template_id = kwargs.get('')
 
             customization_json = False
             product_colors = []
@@ -58,13 +58,48 @@ class ProductStepViewerController(http.Controller):
             else:
                 return {'status': 'error', 'message': 'Missing line id or product id'}
 
-            if product_template:
-                if product_template.model_colors:
-                    product_colors = product_template.model_colors.mapped('color_value')
             return {
-                'status': 'success', 
+                'status': 'success',
                 'customization_json': customization_json,
-                'product_colors': product_colors
+            }
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
+
+    @http.route('/step_file_viewer/get_cad_viewer1_config', type='jsonrpc', auth="public", website=True, csrf=False)
+    def get_cad_viewer1_config(self, **kwargs):
+        try:
+            product_tmpl_id = kwargs.get('product_tmpl_id')
+            if not product_tmpl_id:
+                return {'status': 'error', 'message': 'Missing product template id'}
+                
+            product_template = request.env['product.template'].sudo().browse(int(product_tmpl_id))
+            if not product_template.exists():
+                return {'status': 'error', 'message': 'Template not found'}
+                
+            groups_data = []
+            for group in product_template.parts_groups:
+                colors = []
+                if group.color_template_id:
+                    color_vals = request.env['template.colors.values'].sudo().search([('color_template_id', '=', group.color_template_id.id)])
+                    for cv in color_vals:
+                        colors.append({
+                            'name': cv.color_name,
+                            'hex': cv.color_value
+                        })
+                        
+                search_terms = group.part_search_ids.mapped('search_term')
+                
+                groups_data.append({
+                    'id': f"group_{group.id}",
+                    'displayName': group.display_name or f"Group {group.id}",
+                    'searchTerms': search_terms,
+                    'colors': colors
+                })
+                
+            return {
+                'status': 'success',
+                'productName': product_template.name,
+                'groups': groups_data
             }
         except Exception as e:
             return {'status': 'error', 'message': str(e)}

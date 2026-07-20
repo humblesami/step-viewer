@@ -1,0 +1,45 @@
+<html style="height: 100%; width: 100%;">
+<head>
+    <title>3D Customizer</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    
+    <!-- Modern Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/cyb_step_file_viewer/static/viewer/cad_viewer1.css" />
+
+    <!-- Three.js from Local Libs (ESM) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three_core": "/cyb_step_file_viewer/static/viewer/libs/three_core.js",
+            "OrbitControls": "/cyb_step_file_viewer/static/viewer/libs/orbit_controls.js",
+            "GLTFLoader": "/cyb_step_file_viewer/static/viewer/libs/gltf_loader.js"
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <div id="app-container">
+        <!-- Sidebar Customizer -->
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <h2>Configure Product</h2>
+                <p id="product-name">Loading...</p>
+            </div>
+            
+            <!-- Dynamic UI injected here -->
+            <div id="options-container">
+                <div style="padding: 24px; color: #666;">Loading configuration...</div>
+            </div>
+        </div>
+
+        <!-- 3D Viewer Area -->
+        <div id="viewer-container"></div>
+    </div>
+
+    <script src="/cyb_step_file_viewer/static/js/query_params.js"></script>
+    <script type="module" src="/cyb_step_file_viewer/static/viewer/cad_viewer1.js"></script>
+</body>
+</html>
