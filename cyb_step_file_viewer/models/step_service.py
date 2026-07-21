@@ -27,10 +27,16 @@ class StepService(models.TransientModel):
     def run_attachment_job(self, att_id):
         print("===============job started===============")
         attachment = self.env['ir.attachment'].browse(att_id)
-        glb_bytes = self.conversion_process(att_id, attachment.datas)
+        glb_bytes, manifest = self.conversion_process(att_id, attachment.datas)
         if not glb_bytes:
             _logger.error('Invalid glb bytes')
             raise UserError(_('Invalid glb bytes'))
+
+        import json
+        part_names_json = False
+        if manifest:
+            # The manifest is a dict of {node_name: original_name}, we just need the node_names (keys)
+            part_names_json = json.dumps(list(manifest.keys()))
 
         # create new GLB attachment
         attachment.write({
@@ -39,9 +45,17 @@ class StepService(models.TransientModel):
             'mimetype': 'model/gltf-binary',
             'description': f'Converted from {attachment.name}',
             'is_step_processed': True,
+            'part_names_json': part_names_json,
             'type': 'binary',
             'public': True,
         })
+        
+        # Trigger auto-grouping on any product linking this attachment
+        products = self.env['product.template'].search([('step_file_id', '=', att_id)])
+        for product in products:
+            if hasattr(product, '_auto_generate_parts_groups'):
+                product._auto_generate_parts_groups()
+                
         self._notify_user(att_id)
         print("============Sent notification============")
 
@@ -70,14 +84,14 @@ class StepService(models.TransientModel):
                 with open(input_stp, "wb") as f:
                     f.write(stp_bytes)
                 
-                convert_step_to_glb_with_names(input_stp, output_glb)
+                manifest = convert_step_to_glb_with_names(input_stp, output_glb)
                 
                 glb_bytes = False
                 if os.path.exists(output_glb):
                     with open(output_glb, "rb") as f:
                         glb_bytes = base64.b64encode(f.read())
 
-                return glb_bytes
+                return glb_bytes, manifest
 
             except Exception as e:
                 raise UserError(f"STEP → GLB failed: {str(e)}")

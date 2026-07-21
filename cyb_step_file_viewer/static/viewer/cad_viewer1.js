@@ -94,7 +94,7 @@ async function loadModelAndInitialize() {
         odooPayload = {
             productName: "Cube Booth (Demo/Fallback)",
             groups: [
-                { id: "group_demo", displayName: "Demo Group", searchTerms: ["EXT_"], colors: [{ name: "#222222", hex: "#222222" }] }
+                { id: "group_demo", displayName: "Demo Group", searchTerm: ["EXT_"], colors: [{ name: "#222222", hex: "#222222" }] }
             ]
         };
     }
@@ -113,7 +113,7 @@ async function loadModelAndInitialize() {
 
                 // Check against predefined groups
                 for (const group of odooPayload.groups) {
-                    const isMatch = group.searchTerms.some(term => node.name.includes(term));
+                    const isMatch = group.searchTerm.some(term => node.name.includes(term));
                     if (isMatch) {
                         matchedGroup = group.id;
                         break; // Stop at first group match

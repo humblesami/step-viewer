@@ -87,12 +87,12 @@ class ProductStepViewerController(http.Controller):
                             'hex': cv.color_value
                         })
                         
-                search_terms = group.part_search_ids.mapped('search_term')
+                search_term = group.part_search_id.search_term
                 
                 groups_data.append({
                     'id': f"group_{group.id}",
                     'displayName': group.display_name or f"Group {group.id}",
-                    'searchTerms': search_terms,
+                    'searchTerm': search_term,
                     'colors': colors
                 })
                 

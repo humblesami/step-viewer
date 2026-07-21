@@ -56,5 +56,27 @@
     <menuitem name="Server to list" id="product_model_colors" parent="product_model_colors.menu_2"
               action="product_model_colors.action_server"/>
 -->
+    <record id="view_part_search_tree" model="ir.ui.view">
+        <field name="name">part.search.list</field>
+        <field name="model">part.search</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="search_term" required="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_part_search" model="ir.actions.act_window">
+        <field name="name">Model Parts Search Terms</field>
+        <field name="res_model">part.search</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_part_search_config"
+              name="Model Parts Search Terms"
+              parent="sale.menu_sale_config"
+              action="action_part_search"
+              sequence="100"/>
+
   </data>
 </odoo>
