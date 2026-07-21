@@ -3,6 +3,8 @@ from odoo.exceptions import ValidationError
 
 class PartSearch(models.Model):
     _name = 'part.search'
+    _rec_name = 'term_group_name'
+
     search_term = fields.Char(unique=True)
     term_group_name = fields.Char()
 

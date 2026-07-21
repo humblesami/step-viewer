@@ -17,11 +17,11 @@ class ProductTemplate(models.Model):
     parts_groups = fields.One2many('parts.group', 'product_tmpl_id')
     
 
-    @api.depends('step_file_id')
+    @api.depends('step_file_id', 'step_file_id.datas')
     def _compute_step_content(self):
         for rec in self:
             if rec.step_file_id:
-                rec.step_file_content = b'1'
+                rec.step_file_content = rec.step_file_id.datas
                 rec.step_file_name = rec.step_file_id.name
             else:
                 rec.step_file_content = False
