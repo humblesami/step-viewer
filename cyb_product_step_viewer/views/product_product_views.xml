@@ -13,28 +13,6 @@
         </field>
     </record>
 
-    <record id="product_normal_form_view_inherit_step" model="ir.ui.view">
-        <field name="name">product.product.form.inherit.step</field>
-        <field name="model">product.product</field>
-        <field name="inherit_id" ref="product.product_normal_form_view"/>
-        <field name="arch" type="xml">
-            <xpath expr="//page[@name='sales']" position="after">
-                <page string="3D Model" name="step_file">
-                    <group>
-                        <field name="step_file_id" invisible="1"/>
-                        <field name="step_file_name" invisible="1"/>
-                        <div class="o_horizontal_separator">3D Model File</div>
-                        <div class="d-flex align-items-center gap-3">
-                            <field name="step_file_content" widget="binary" filename="step_file_name" nolabel="1"/>
-                            <field name="step_file_id" widget="many2one_3d_viewer" nolabel="1" invisible="not step_file_id"/>
-                        </div>
-                        <field name="parts_groups" nolabel="1"/>
-                    </group>
-                </page>
-            </xpath>
-        </field>
-    </record>
-
     <record id="product_template_only_form_view_inherit_step" model="ir.ui.view">
         <field name="name">product.template.form.inherit.step</field>
         <field name="model">product.template</field>
@@ -50,7 +28,39 @@
                             <field name="step_file_content" widget="binary" filename="step_file_name" nolabel="1"/>
                             <field name="step_file_id" widget="many2one_3d_viewer" nolabel="1" invisible="not step_file_id"/>
                         </div>
-                        <field name="parts_groups"/>
+                        <div class="o_horizontal_separator mt-4">Part Groups &amp; Customization</div>
+                        <field name="has_overlaps" invisible="1"/>
+                        <div class="w-100" invisible="not has_overlaps">
+                            <button name="action_open_overlap_wizard" type="object" string="⚠️ Resolve Overlaps" class="btn-danger mb-2"/>
+                        </div>
+                        <field name="parts_groups" widget="many2many_tags" options="{'color_field': 'color', 'no_create_edit': False}" nolabel="1">
+                            <form string="Part Group Configuration">
+                                <group>
+                                    <group>
+                                        <field name="display_name" string="Group Name" required="1"/>
+                                        <field name="color_template_id" string="Allowed Colors Template"/>
+                                    </group>
+                                    <group>
+                                        <field name="part_count" string="Number of 3D Parts" readonly="1"/>
+                                        <field name="choosen_color" string="Current Color" readonly="1"/>
+                                    </group>
+                                </group>
+                                <notebook>
+                                    <page string="Search Terms" name="search_terms">
+                                        <field name="part_search_ids" widget="many2many_tags"/>
+                                    </page>
+                                    <page string="Merge With Another Group" name="merge">
+                                        <group>
+                                            <field name="merge_with_group_id" placeholder="Select group to absorb..."/>
+                                            <button name="action_merge_group" type="object" string="Confirm Merge" class="btn-primary" invisible="not merge_with_group_id"/>
+                                        </group>
+                                        <div class="text-muted mt-2">
+                                            <i>Note: Merging will absorb all search terms from the selected group into this one, and the selected group will be deleted.</i>
+                                        </div>
+                                    </page>
+                                </notebook>
+                            </form>
+                        </field>
                     </group>
                 </page>
             </xpath>

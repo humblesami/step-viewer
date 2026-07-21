@@ -71,6 +71,13 @@ class PartsGroup(models.Model):
         self.merge_with_group_id.unlink()
         self.merge_with_group_id = False
 
+    def name_get(self):
+        result = []
+        for group in self:
+            name = group.display_name or 'Unnamed Group'
+            result.append((group.id, f"{name} ({group.part_count} parts)"))
+        return result
+
     @api.constrains('part_search_ids')
     def _check_overlap(self):
         # We will handle the strict validation here, but to support the 3 options wizard 
