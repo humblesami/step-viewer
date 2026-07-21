@@ -94,13 +94,26 @@ async function loadModelAndInitialize() {
         odooPayload = {
             productName: "Cube Booth (Demo/Fallback)",
             groups: [
-                { id: "group_demo", displayName: "Demo Group", searchTerm: ["EXT_"], colors: [{ name: "#222222", hex: "#222222" }] }
+                { id: "group_demo", displayName: "Demo Group", searchTerm: "EXT_", colors: [{ name: "#222222", hex: "#222222" }] }
             ]
         };
     }
 
     try {
-        const gltf = await loader.loadAsync(modelPath);
+        const gltf = await new Promise(async (resolve, reject) => {
+            try {
+                const response = await fetch(modelPath);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const arrayBuffer = await response.arrayBuffer();
+                loader.parse(arrayBuffer, '', (gltf) => {
+                    resolve(gltf);
+                }, (error) => {
+                    reject(error);
+                });
+            } catch (err) {
+                reject(err);
+            }
+        });
         const model = gltf.scene;
 
         // Grouping Logic: Iterate over meshes and apply "First Match Wins"
@@ -134,7 +147,28 @@ async function loadModelAndInitialize() {
         const box = new THREE.Box3().setFromObject(model);
         const center = box.getCenter(new THREE.Vector3());
         model.position.sub(center);
+        
+        // Add a premium slight tilt like the old viewer
+        model.rotation.set(-0.3, 0.6, 0);
+        
         scene.add(model);
+
+        // Dynamically adjust camera to fit the model (models can be in mm and huge)
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const fovRad = (camera.fov * Math.PI) / 180;
+        let dist = Math.abs(maxDim / Math.sin(fovRad / 2)) * 1.2;
+        
+        // Ensure minimum distance so small objects don't break camera near plane
+        if (dist < 1) dist = 3;
+
+        camera.position.set(0, dist * 0.2, dist);
+        controls.target.set(0, 0, 0);
+        controls.update();
+
+        // Dynamically scale far plane so huge models don't clip at the back
+        camera.far = dist * 10;
+        camera.updateProjectionMatrix();
 
         buildUI();
 
