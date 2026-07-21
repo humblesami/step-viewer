@@ -5,7 +5,7 @@
 
 
     # any module necessary for this one to work correctly
-    'depends': ['product'],
+    'depends': ['sale', 'cyb_step_file_viewer'],
     'author': 'cybat',
 
     # always loaded

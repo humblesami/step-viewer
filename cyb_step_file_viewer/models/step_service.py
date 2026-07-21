@@ -15,20 +15,58 @@ class StepService(models.TransientModel):
     _name = 'step.file.service'
     _description = "Step File Service"
 
-
     def process_attachment(self, attachment):
         if not attachment.needs_step_conversion():
-            self.make_part_groups(attachment.id)
+            self.make_part_groups(0, attachment)
             return
+
         # self.with_delay().run_attachment_job(attachment.id)
         self.run_attachment_job(attachment.id)
-        
-    def make_part_groups(self, att_id):
-        # Trigger auto-grouping on any product linking this attachment
-        products = self.env['product.template'].search([('step_file_id', '=', att_id)])
-        for product in products:
-            if hasattr(product, '_auto_generate_parts_groups'):
-                product._auto_generate_parts_groups()
+
+    def _extract_names_from_glb_bytes(self, glb_bytes):
+        """Natively parse the JSON chunk of a GLB file to find mesh/node names."""
+        import struct
+        if len(glb_bytes) < 20:
+            return []
+
+        # Parse the 12-byte header
+        magic, version, length = struct.unpack('<4sII', glb_bytes[:12])
+        if magic != b'glTF':
+            return []
+
+        # Parse the chunk 0 header
+        chunk_0_length, chunk_0_type = struct.unpack('<II', glb_bytes[12:20])
+        if chunk_0_type != b'JSON':
+            return []
+
+        try:
+            # Decode the JSON chunk
+            json_data = glb_bytes[20:20 + chunk_0_length]
+            gltf = json.loads(json_data.decode('utf-8'))
+            names = []
+
+            # Extract names from nodes that have meshes
+            if 'nodes' in gltf:
+                for node in gltf['nodes']:
+                    if 'mesh' in node and 'name' in node:
+                        names.append(node['name'])
+
+            # Fallback: if nodes don't have names, check meshes directly
+            if not names and 'meshes' in gltf:
+                for mesh in gltf['meshes']:
+                    if 'name' in mesh:
+                        names.append(mesh['name'])
+
+            return names
+        except Exception as e:
+            _logger.warning("Could not parse GLB JSON chunk for parts: %s", e)
+            return []
+
+    def make_part_groups(self, att_id, att_obj=None):
+        if att_obj and att_obj.name and att_obj.name.lower().endswith('.glb') and att_obj.datas:
+            names = self._extract_names_from_glb_bytes(base64.b64decode(att_obj.datas))
+            if names:
+                att_obj.part_names_json = json.dumps(names)
 
     def run_attachment_job(self, att_id):
         print("===============job started===============")
@@ -38,10 +76,8 @@ class StepService(models.TransientModel):
             _logger.error('Invalid glb bytes')
             raise UserError(_('Invalid glb bytes'))
 
-        
         part_json_names = False
         if manifest:
-            # The manifest is a dict of {node_name: original_name}, we just need the node_names (keys)
             part_json_names = json.dumps(list(manifest.keys()))
 
         # create new GLB attachment

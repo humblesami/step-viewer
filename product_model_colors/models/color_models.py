@@ -1,5 +1,6 @@
 import json
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
 
 
 class ColorsTemplate(models.Model):
@@ -31,14 +32,16 @@ class PartSearch(models.Model):
     @api.constrains('search_term')
     def _check_global_overlap(self):
         for record in self:
-            if record.search_term:
-                existing = self.env['part.search'].search([('id', '!=', record.id)])
-                for term in existing:
-                    if record.search_term in term.search_term or term.search_term in record.search_term:
-                        from odoo.exceptions import ValidationError
-                        raise ValidationError(
-                            f"Strict Validation Failed: Cannot add '{record.search_term}' because it overlaps with existing global term '{term.search_term}'."
-                        )
+            if not record.search_term:
+                continue
+            existing = self.env['part.search'].search([('id', '!=', record.id)])
+            for term in existing:
+                if not (record.search_term in term.search_term or term.search_term in record.search_term):
+                    continue
+
+                raise ValidationError(
+                    f"Strict Validation Failed: Cannot add '{record.search_term}' because it overlaps with existing global term '{term.search_term}'."
+                )
 
 class PartsGroup(models.Model):
     _name = 'parts.group'
@@ -91,3 +94,14 @@ class ProductTemplate(models.Model):
         tid = self.color_template_id.id or (ref_tid.id if ref_tid else False)
         return []
 
+
+class StepService(models.TransientModel):
+    _inherit = 'step.file.service'
+
+    def make_part_groups(self, att_id, att_obj=None):
+        super().make_part_groups(att_id, att_obj)
+        if att_obj:
+            att_id = att_obj.id
+        products = self.env['product.template'].search([('step_file_id', '=', att_id)])
+        for product in products:
+            product._auto_generate_parts_groups()
