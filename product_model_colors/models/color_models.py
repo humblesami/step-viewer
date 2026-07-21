@@ -1,3 +1,4 @@
+import json
 from odoo import models, fields, api
 
 
@@ -25,6 +26,7 @@ class ProductModelColors(models.Model):
 class PartSearch(models.Model):
     _name = 'part.search'
     search_term = fields.Char(unique=True)
+    group_title = fields.Char()
 
     @api.constrains('search_term')
     def _check_global_overlap(self):
@@ -62,28 +64,24 @@ class ProductTemplate(models.Model):
     parts_groups = fields.One2many('parts.group', 'product_tmpl_id')
 
     def _auto_generate_parts_groups(self):
-        import json
+        
         for product in self:
             if not product.step_file_id or not product.step_file_id.part_names_json:
                 continue
             
             try:
-                part_names = json.loads(product.step_file_id.part_names_json)
+                part_json_names = json.loads(product.step_file_id.part_names_json)
             except Exception:
                 continue
-                
-            # Clear existing auto-generated groups or all groups? 
-            # We should probably clear them to prevent duplicates if re-converted
-            product.parts_groups.unlink()
-            
+            if product.parts_groups:
+                continue
             all_search_terms = self.env['part.search'].search([])
-            
             for term in all_search_terms:
-                matched_parts = [p for p in part_names if term.search_term in p]
+                matched_parts = [p for p in part_json_names if term.search_term in p]
                 if matched_parts:
                     self.env['parts.group'].create({
                         'product_tmpl_id': product.id,
-                        'display_name': term.search_term,
+                        'display_name': term.group_title,
                         'part_count': len(matched_parts),
                         'part_search_id': [(4, term.id)]
                     })

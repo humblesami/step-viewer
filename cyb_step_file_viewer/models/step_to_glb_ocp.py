@@ -109,7 +109,7 @@ def convert_step_to_glb_with_names(step_file_path: str, output_glb_path: str) ->
         manifest[node_name] = original_name
 
     print(f"Exporting precise GLB to {output_glb_path}...")
-    assy.save(output_glb_path, "GLTF", tolerance=1.2, angularTolerance=0.8, write_binary=True)
+    assy.export(output_glb_path, "GLTF", tolerance=1.2, angularTolerance=0.8, write_binary=True)
 
     # Write Sidecar JSON Manifest for your JS UI clustering
     manifest_path = output_glb_path.replace(".glb", "_parts.json")

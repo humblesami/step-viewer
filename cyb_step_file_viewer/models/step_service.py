@@ -1,12 +1,10 @@
 import os
-import time
+import json
 import base64
 import logging
-import subprocess
 import tempfile
-import cadquery as cq
-from odoo import models, fields, api, _
-from odoo.exceptions import UserError, ValidationError
+from odoo import models, fields, _
+from odoo.exceptions import UserError
 from .step_to_glb_ocp import convert_step_to_glb_with_names
 
 _logger = logging.getLogger(__name__)
@@ -20,9 +18,17 @@ class StepService(models.TransientModel):
 
     def process_attachment(self, attachment):
         if not attachment.needs_step_conversion():
+            self.make_part_groups(attachment.id)
             return
         # self.with_delay().run_attachment_job(attachment.id)
         self.run_attachment_job(attachment.id)
+        
+    def make_part_groups(self, att_id):
+        # Trigger auto-grouping on any product linking this attachment
+        products = self.env['product.template'].search([('step_file_id', '=', att_id)])
+        for product in products:
+            if hasattr(product, '_auto_generate_parts_groups'):
+                product._auto_generate_parts_groups()
 
     def run_attachment_job(self, att_id):
         print("===============job started===============")
@@ -32,11 +38,11 @@ class StepService(models.TransientModel):
             _logger.error('Invalid glb bytes')
             raise UserError(_('Invalid glb bytes'))
 
-        import json
-        part_names_json = False
+        
+        part_json_names = False
         if manifest:
             # The manifest is a dict of {node_name: original_name}, we just need the node_names (keys)
-            part_names_json = json.dumps(list(manifest.keys()))
+            part_json_names = json.dumps(list(manifest.keys()))
 
         # create new GLB attachment
         attachment.write({
@@ -45,16 +51,12 @@ class StepService(models.TransientModel):
             'mimetype': 'model/gltf-binary',
             'description': f'Converted from {attachment.name}',
             'is_step_processed': True,
-            'part_names_json': part_names_json,
+            'part_names_json': part_json_names,
             'type': 'binary',
             'public': True,
         })
-        
-        # Trigger auto-grouping on any product linking this attachment
-        products = self.env['product.template'].search([('step_file_id', '=', att_id)])
-        for product in products:
-            if hasattr(product, '_auto_generate_parts_groups'):
-                product._auto_generate_parts_groups()
+
+        self.make_part_groups(att_id)
                 
         self._notify_user(att_id)
         print("============Sent notification============")
