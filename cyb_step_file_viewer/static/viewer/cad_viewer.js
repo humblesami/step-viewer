@@ -1,4 +1,4 @@
-import * as THREE from 'three_core';
+import * as THREE from 'three_modules';
 import { OrbitControls } from 'OrbitControls';
 import { GLTFLoader } from 'GLTFLoader';
 

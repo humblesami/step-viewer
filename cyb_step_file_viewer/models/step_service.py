@@ -66,7 +66,7 @@ class StepService(models.TransientModel):
         if att_obj and att_obj.name and att_obj.name.lower().endswith('.glb') and att_obj.datas:
             names = self._extract_names_from_glb_bytes(base64.b64decode(att_obj.datas))
             if names:
-                att_obj.part_names_json = json.dumps(names)
+                att_obj.glb_part_names_json = json.dumps(names)
 
     def run_attachment_job(self, att_id):
         print("===============job started===============")
@@ -87,7 +87,7 @@ class StepService(models.TransientModel):
             'mimetype': 'model/gltf-binary',
             'description': f'Converted from {attachment.name}',
             'is_step_processed': True,
-            'part_names_json': part_json_names,
+            'glb_part_names_json': part_json_names,
             'type': 'binary',
             'public': True,
         })

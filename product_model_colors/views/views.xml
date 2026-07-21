@@ -23,5 +23,18 @@
               action="action_part_search"
               sequence="100"/>
 
+    <record id="view_glb_parts_wizard_form" model="ir.ui.view">
+        <field name="name">glb.parts.wizard.form</field>
+        <field name="model">glb.parts.wizard</field>
+        <field name="arch" type="xml">
+            <form string="GLB Parts">
+                <field name="parts_list" widget="text" style="height: 300px; width: 100%; font-family: monospace;" readonly="1"/>
+                <footer>
+                    <button string="Close" class="btn-secondary" special="cancel" data-hotkey="z"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
   </data>
 </odoo>

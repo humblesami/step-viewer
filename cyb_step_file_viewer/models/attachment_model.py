@@ -7,7 +7,7 @@ class IrAttachment(models.Model):
 
     file_extension = fields.Char()
     is_step_processed = fields.Boolean()
-    part_names_json = fields.Text(string="Extracted Part Names (JSON)")
+    glb_part_names_json = fields.Text(string="Extracted Part Names (JSON)")
 
     def needs_step_conversion(self):
         is_step_file = str(self.raw or '').startswith("b\"ISO-10303-21;")
