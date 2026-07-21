@@ -112,7 +112,7 @@ class ProductTemplate(models.Model):
                     continue
                 values = {
                     'product_tmpl_id': product.id,
-                    'display_name': term.group_title,
+                    'group_title': term.term_group_name,
                     'part_count': len(matched_parts),
                     'color_template_id': default_template.id,
                     'part_search_id': term.id

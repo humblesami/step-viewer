@@ -57,10 +57,10 @@ export class Many2One3DViewer extends Component {
         let filename = 'Model';
 
         if (this.props.record.resModel === 'sale.order.line') {
-            const stepFile = this.props.record.data.product_step_file_id;
-            if (stepFile) {
-                attachmentId = Array.isArray(stepFile) ? stepFile[0] : stepFile.id;
-                filename = Array.isArray(stepFile) ? stepFile[1] : (stepFile.display_name || 'Model');
+            const stpFile = this.props.record.data.product_step_file_id;
+            if (stpFile) {
+                attachmentId = Array.isArray(stpFile) ? stpFile[0] : stpFile.id;
+                filename = Array.isArray(stpFile) ? stpFile[1] : (stpFile || 'Model');
             }
         } else {
             const dataVal = this.props.record.data[this.props.name];

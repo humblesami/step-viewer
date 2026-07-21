@@ -91,7 +91,7 @@ class ProductStepViewerController(http.Controller):
                 
                 groups_data.append({
                     'id': f"group_{group.id}",
-                    'displayName': group.display_name or f"Group {group.id}",
+                    'displayName': group.group_title or f"Group {group.id}",
                     'searchTerm': search_term,
                     'colors': colors
                 })

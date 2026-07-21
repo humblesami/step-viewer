@@ -1,5 +1,6 @@
 import os
 import json
+import struct
 import base64
 import logging
 import tempfile
@@ -25,7 +26,7 @@ class StepService(models.TransientModel):
 
     def _extract_names_from_glb_bytes(self, glb_bytes):
         """Natively parse the JSON chunk of a GLB file to find mesh/node names."""
-        import struct
+
         if len(glb_bytes) < 20:
             return []
 
@@ -64,7 +65,8 @@ class StepService(models.TransientModel):
 
     def make_part_groups(self, att_id, att_obj=None):
         if att_obj and att_obj.name and att_obj.name.lower().endswith('.glb') and att_obj.datas:
-            names = self._extract_names_from_glb_bytes(base64.b64decode(att_obj.datas))
+            glb_bytes = base64.b64decode(att_obj.datas)
+            names = self._extract_names_from_glb_bytes(glb_bytes)
             if names:
                 att_obj.glb_part_names_json = json.dumps(names)
 

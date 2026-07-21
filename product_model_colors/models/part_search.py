@@ -4,7 +4,7 @@ from odoo.exceptions import ValidationError
 class PartSearch(models.Model):
     _name = 'part.search'
     search_term = fields.Char(unique=True)
-    group_title = fields.Char()
+    term_group_name = fields.Char()
 
     @api.constrains('search_term')
     def _check_global_overlap(self):
@@ -24,7 +24,7 @@ class PartsGroup(models.Model):
     _name = 'parts.group'
     
     product_tmpl_id = fields.Many2one('product.template')
-    display_name = fields.Char()
+    group_title = fields.Char()
     part_count = fields.Integer('Number of Parts', default=0)
     part_search_id = fields.Many2one('part.search')
     color_template_id = fields.Many2one('colors.template')
@@ -33,6 +33,6 @@ class PartsGroup(models.Model):
     def name_get(self):
         result = []
         for group in self:
-            name = group.display_name or 'Unnamed Group'
+            name = group.group_title or 'Unnamed Group'
             result.append((group.id, f"{name} ({group.part_count} parts)"))
         return result
