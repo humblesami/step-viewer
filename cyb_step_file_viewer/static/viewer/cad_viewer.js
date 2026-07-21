@@ -113,7 +113,7 @@ async function loadModelAndInitialize() {
 
                 // Check against predefined groups
                 for (const group of odooPayload.groups) {
-                    const isMatch = group.searchTerm.some(term => node.name.includes(term));
+                    const isMatch = group.searchTerm && node.name.toLowerCase().includes(group.searchTerm.toLowerCase());
                     if (isMatch) {
                         matchedGroup = group.id;
                         break; // Stop at first group match

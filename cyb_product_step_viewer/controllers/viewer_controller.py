@@ -83,7 +83,7 @@ class ProductStepViewerController(http.Controller):
                     color_vals = request.env['template.colors.values'].sudo().search([('color_template_id', '=', group.color_template_id.id)])
                     for cv in color_vals:
                         colors.append({
-                            'name': cv.color_name,
+                            'name': cv.color_value,
                             'hex': cv.color_value
                         })
                         
