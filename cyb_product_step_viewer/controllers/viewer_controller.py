@@ -65,8 +65,8 @@ class ProductStepViewerController(http.Controller):
         except Exception as e:
             return {'status': 'error', 'message': str(e)}
 
-    @http.route('/step_file_viewer/get_cad_viewer1_config', type='jsonrpc', auth="public", website=True, csrf=False)
-    def get_cad_viewer1_config(self, **kwargs):
+    @http.route('/step_file_viewer/get_cad_viewer_config', type='jsonrpc', auth="public", website=True, csrf=False)
+    def get_cad_viewer_config(self, **kwargs):
         try:
             product_tmpl_id = kwargs.get('product_tmpl_id')
             if not product_tmpl_id:

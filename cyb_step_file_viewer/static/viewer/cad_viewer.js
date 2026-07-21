@@ -55,7 +55,7 @@ activeGroups["group_others"] = [];
 async function fetchConfiguration(product_tmpl_id) {
     if (!product_tmpl_id) return null;
     try {
-        const response = await fetch('/step_file_viewer/get_cad_viewer1_config', {
+        const response = await fetch('/step_file_viewer/get_cad_viewer_config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

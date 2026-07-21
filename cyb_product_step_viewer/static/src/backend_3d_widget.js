@@ -90,7 +90,7 @@ export class Many2One3DViewer extends Component {
         }
 
         // Build your URL matching your exact frontend logic
-        const web_page = '/cyb_step_file_viewer/static/viewer/cad_viewer1.html';
+        const web_page = '/cyb_step_file_viewer/static/viewer/cad_viewer.html';
         let query_params = `?file_id=${attachmentId}&filename=${encodeURIComponent(filename)}`;
 
         if (productId) {
