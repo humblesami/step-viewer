@@ -52,7 +52,7 @@ class PartsGroup(models.Model):
     part_count = fields.Integer('Number of Parts', default=0)
     part_search_ids = fields.Many2many('part.search')
     color_template_id = fields.Many2one('colors.template')
-    choosen_color = fields.Char()
+    chosen_color = fields.Char()
     merge_with_group_id = fields.Many2one(
         'parts.group', 
         string="Merge with...",

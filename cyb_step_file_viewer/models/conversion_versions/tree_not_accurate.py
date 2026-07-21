@@ -19,7 +19,7 @@ from OCP.XCAFDoc import XCAFDoc_DocumentTool, XCAFDoc_ColorType
 # Regex to detect standard UUIDs
 UUID_PATTERN = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 
-def convert_step_to_glb_with_names(step_file_path: str, output_glb_path: str) -> dict:
+def convert_step_to_tree_glb(step_file_path: str, output_glb_path: str) -> dict:
     """
     Extracts true names/colors, strips out UUIDs, collapses single-child chains,
     and directly attaches shapes to prevent CadQuery naming collisions.

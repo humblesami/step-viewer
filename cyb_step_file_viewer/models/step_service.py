@@ -70,7 +70,7 @@ class StepService(models.TransientModel):
                 with open(input_stp, "wb") as f:
                     f.write(stp_bytes)
                 
-                convert_step_to_glb(input_stp, output_glb)
+                convert_step_to_glb_with_names(input_stp, output_glb)
                 
                 glb_bytes = False
                 if os.path.exists(output_glb):
@@ -98,8 +98,6 @@ class StepService(models.TransientModel):
         }
 
 
-def convert_step_to_glb(step_file_path, output_path):
-    convert_step_to_glb_with_names(step_file_path, output_path)
 
 class StpFiles(models.Model):
     _name = 'step.files'

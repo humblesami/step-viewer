@@ -31,7 +31,7 @@ publicWidget.registry.StepViewer = publicWidget.Widget.extend({
         const $modal = $('#step_viewer_iframe_container');
         const $iframe = $('#step_viewer_iframe');
 
-        const web_page = '/cyb_step_file_viewer/static/viewer/cad_viewer.html';
+        const web_page = '/cyb_step_file_viewer/static/viewer/cad_viewer1.html';
         let query_params = `?file_id=${attachmentId}&filename=${$btn.data('filename')}`;
 
         if ($btn.data('product-id')) {

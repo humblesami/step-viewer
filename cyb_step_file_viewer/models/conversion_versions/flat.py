@@ -17,7 +17,7 @@ from OCP.XCAFDoc import XCAFDoc_DocumentTool, XCAFDoc_ColorType
 
 
 
-def convert_step_to_glb_with_names(step_file_path: str, output_glb_path: str) -> dict:
+def convert_step_to_flat_glb(step_file_path: str, output_glb_path: str) -> dict:
     """
     Extracts true names/colors using OCP XCAF, applies absolute 3D locations,
     and exports a flat, UI-friendly GLB using CadQuery's native exporter.
