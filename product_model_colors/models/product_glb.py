@@ -1,82 +1,21 @@
 import json
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
-
-
-class ColorsTemplate(models.Model):
-    _name = 'colors.template'
-
-    name = fields.Char()
-
-class ColorsTemplateValues(models.Model):
-    _name = 'template.colors.values'
-    _description = 'product_model_colors.product_model_colors'
-
-    color_template_id = fields.Many2one('colors.template')
-    color_value = fields.Char()
-
-
-class ProductModelColors(models.Model):
-    _name = 'product_model.colors'
-    _description = 'product_model_colors.product_model_colors'
-
-    product_tmpl_id = fields.Many2one('product.template')
-    color_value = fields.Char()
-
-
-class PartSearch(models.Model):
-    _name = 'part.search'
-    search_term = fields.Char(unique=True)
-    group_title = fields.Char()
-
-    @api.constrains('search_term')
-    def _check_global_overlap(self):
-        for record in self:
-            if not record.search_term:
-                continue
-            existing = self.env['part.search'].search([('id', '!=', record.id)])
-            for term in existing:
-                if not (record.search_term in term.search_term or term.search_term in record.search_term):
-                    continue
-
-                raise ValidationError(
-                    f"Strict Validation Failed: Cannot add '{record.search_term}' because it overlaps with existing global term '{term.search_term}'."
-                )
-
-class PartsGroup(models.Model):
-    _name = 'parts.group'
-    
-    product_tmpl_id = fields.Many2one('product.template')
-    display_name = fields.Char()
-    part_count = fields.Integer('Number of Parts', default=0)
-    part_search_id = fields.Many2many('part.search')
-    color_template_id = fields.Many2one('colors.template')
-    chosen_color = fields.Char()
-
-
-    def name_get(self):
-        result = []
-        for group in self:
-            name = group.display_name or 'Unnamed Group'
-            result.append((group.id, f"{name} ({group.part_count} parts)"))
-        return result
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
-
-    parts_groups = fields.One2many('parts.group', 'product_tmpl_id')
-    
-    glb_part_names_json = fields.Text(related="step_file_id.glb_part_names_json")
-    has_glb_parts = fields.Boolean(compute="_compute_has_glb_parts")
 
     step_file_id = fields.Many2one(
         'ir.attachment',
         help="Upload .step, .stp, or .glb files. STEP files >= 4MB will be automatically exported to GLB."
     )
-    
-    # Proxy fields for better upload UX in the form view
     step_file_content = fields.Binary(string='3D Model File', compute='_compute_step_content', inverse='_inverse_step_content')
     step_file_name = fields.Char(string='File Name')
+    glb_part_names_json = fields.Text(related="step_file_id.glb_part_names_json")
+    
+    has_glb_parts = fields.Boolean(compute="_compute_has_glb_parts")
+    parts_groups = fields.One2many('parts.group', 'product_tmpl_id')
+    
 
     @api.depends('step_file_id')
     def _compute_step_content(self):
@@ -109,7 +48,6 @@ class ProductTemplate(models.Model):
                 if rec.step_file_id:
                     rec.step_file_id.sudo().unlink()
                     rec.step_file_id = False
-
 
     @api.model_create_multi
     def create(self, values):
@@ -156,7 +94,7 @@ class ProductTemplate(models.Model):
         }
 
     def action_auto_generate_parts_groups(self):
-        
+        default_template = self.env.ref('product_model_colors.demo_template_1', raise_if_not_found=False)
         for product in self:
             if not product.step_file_id or not product.step_file_id.glb_part_names_json:
                 continue
@@ -166,17 +104,20 @@ class ProductTemplate(models.Model):
             except Exception:
                 continue
             if product.parts_groups:
-                continue
+                product.parts_groups.unlink()
             all_search_terms = self.env['part.search'].search([])
             for term in all_search_terms:
-                matched_parts = [p for p in part_json_names if term.search_term in p]
-                if matched_parts:
-                    self.env['parts.group'].create({
-                        'product_tmpl_id': product.id,
-                        'display_name': term.group_title,
-                        'part_count': len(matched_parts),
-                        'part_search_id': [(4, term.id)]
-                    })
+                matched_parts = [p for p in part_json_names if term.search_term.lower() in p.lower()]
+                if not matched_parts:
+                    continue
+                values = {
+                    'product_tmpl_id': product.id,
+                    'display_name': term.group_title,
+                    'part_count': len(matched_parts),
+                    'color_template_id': default_template.id,
+                    'part_search_id': term.id
+                }
+                self.env['parts.group'].create(values)
 
     def fetch_product_colors(self):
         ref_tid = self.env.ref('product_model_colors.demo_template_1', raise_if_not_found=False)

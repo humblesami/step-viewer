@@ -17,12 +17,6 @@
         <field name="view_mode">list,form</field>
     </record>
 
-    <menuitem id="menu_part_search_config"
-              name="Model Parts Search Terms"
-              parent="sale.menu_sale_config"
-              action="action_part_search"
-              sequence="100"/>
-
     <record id="view_glb_parts_wizard_form" model="ir.ui.view">
         <field name="name">glb.parts.wizard.form</field>
         <field name="model">glb.parts.wizard</field>
@@ -35,6 +29,57 @@
             </form>
         </field>
     </record>
+
+    <record id="view_colors_template_tree" model="ir.ui.view">
+        <field name="name">colors.template.list</field>
+        <field name="model">colors.template</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_colors_template_form" model="ir.ui.view">
+        <field name="name">colors.template.form</field>
+        <field name="model">colors.template</field>
+        <field name="arch" type="xml">
+            <form string="Colors Template">
+                <sheet>
+                    <group>
+                        <field name="name" required="1"/>
+                    </group>
+                    <notebook>
+                        <page string="Colors">
+                            <field name="color_ids">
+                                <list editable="bottom">
+                                    <field name="color_value" string="Color (Hex or Name)" required="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_colors_template" model="ir.actions.act_window">
+        <field name="name">Color Templates</field>
+        <field name="res_model">colors.template</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_colors_template_config"
+              name="Color Templates"
+              parent="sale.menu_sale_config"
+              action="action_colors_template"
+              sequence="1"/>
+
+    <menuitem id="menu_part_search_config"
+            name="Model Parts Search Terms"
+            parent="sale.menu_sale_config"
+            action="action_part_search"
+            sequence="2"/>
 
   </data>
 </odoo>

@@ -4,5 +4,4 @@ access_template_colors_values,template.color.values,model_template_colors_values
 access_product_model_colors,product_model.colors,model_product_model_colors,base.group_user,1,1,1,1
 access_part_search,part.search,model_part_search,base.group_user,1,1,1,1
 access_parts_group,parts.group,model_parts_group,base.group_user,1,1,1,1
-access_parts_overlap_wizard,parts.overlap.wizard,model_parts_overlap_wizard,base.group_user,1,1,1,1
 access_glb_parts_wizard,glb.parts.wizard,model_glb_parts_wizard,base.group_user,1,1,1,1
