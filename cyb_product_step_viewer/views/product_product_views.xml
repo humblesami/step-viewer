@@ -38,10 +38,10 @@
                             <field name="part_name"/>
                         </list>
                     </field>
-                    
-                    <div>
-                        <div class="o_horizontal_separator mt-4">Part Groups &amp; Customization</div>                        
-                        
+
+                    <div class="glb_groups">
+                        <h3 class="o_horizontal_separator mt-4">Part Groups &amp; Customization</h3>
+
                         <field name="parts_group_ids" nolabel="1">
                             <list>
                                 <field name="group_title" string="Group Name"/>
@@ -53,15 +53,15 @@
                                     <field name="group_title" string="Group Name" required="1"/>
                                     <field name="color_template_id" string="Allowed Colors Template"/>
                                     <field name="part_count" string="Count" readonly="1"/>
-                                </group>    
+                                </group>
                                 <field name="part_ids" nolabel="1">
                                     <list>
                                         <field name="part_name" string="Part Name"/>
                                     </list>
-                                </field>                                
+                                </field>
                             </form>
                         </field>
-                    </div>                    
+                    </div>
                 </page>
             </xpath>
         </field>
