@@ -2,6 +2,7 @@ import json
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 
+
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
@@ -11,8 +12,7 @@ class ProductTemplate(models.Model):
     )
     step_file_content = fields.Binary(string='3D Model File', compute='_compute_step_content', inverse='_inverse_step_content')
     step_file_name = fields.Char(string='File Name')
-    
-    glb_part_ids = fields.One2many('glb.part', 'product_tmpl_id')
+    model_part_ids = fields.One2many(related='step_file_id.glb_part_ids')
     parts_group_ids = fields.One2many('parts.group', 'product_tmpl_id')
     
 
@@ -57,8 +57,11 @@ class ProductTemplate(models.Model):
         return records
 
     def write(self, vals):
-        res = super().write(vals)
         if vals.get('step_file_content') or vals.get('step_file_id'):
+            self.parts_group_ids.unlink()
+            self.step_file_id.glb_part_ids.unlink()
+        res = super().write(vals)
+        if self.step_file_id and (vals.get('step_file_content') or vals.get('step_file_id')):
             self.env['step.file.service'].process_attachment(self.step_file_id)
         return res
 
@@ -75,10 +78,10 @@ class ProductTemplate(models.Model):
     def action_auto_generate_glb_groups(self):
         default_template = self.env.ref('product_model_colors.demo_template_1', raise_if_not_found=False)
         for product in self:
-            if not product.glb_part_ids:
+            if not (product.step_file_id and product.step_file_id.glb_part_ids):
                 continue
             
-            part_names = product.glb_part_ids.mapped('part_name')
+            part_names = product.step_file_id.glb_part_ids.mapped('part_name')
 
             if product.parts_group_ids:
                 product.parts_group_ids.unlink()
@@ -92,7 +95,6 @@ class ProductTemplate(models.Model):
                     'group_title': term.term_group_name,
                     'part_count': len(matched_parts),
                     'color_template_id': default_template.id,
-                    'part_search_id': term.id
                 }
                 self.env['parts.group'].create(values)
 
@@ -101,15 +103,4 @@ class ProductTemplate(models.Model):
         tid = self.color_template_id.id or (ref_tid.id if ref_tid else False)
         return []
 
-
-class StepService(models.TransientModel):
-    _inherit = 'step.file.service'
-
-    def save_glb_parts(self, att_obj, part_names=None):
-        super().save_glb_parts(att_obj, part_names)
-        att_id = att_obj.id
-        products = self.env['product.template'].search([('step_file_id', '=', att_id)])
-        for product in products:
-            self.env.cr.execute('update glb_part set product_tmpl_id = %s where att_id = %s and product_tmpl_id is null', (product.id, att_id) )
-            self.env.cr.commit()
 

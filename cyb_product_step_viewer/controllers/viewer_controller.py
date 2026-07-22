@@ -52,9 +52,6 @@ class ProductStepViewerController(http.Controller):
                     if sale_order_line.order_id.access_token != access_token:
                         return {'status': 'error', 'message': 'Invalid access token'}
                 customization_json = sale_order_line.model_customization_json
-                product_template = sale_order_line.product_id.product_tmpl_id
-            elif product_template_id:
-                product_template = request.env['product.template'].sudo().browse(int(product_template_id))
             else:
                 return {'status': 'error', 'message': 'Missing line id or product id'}
 

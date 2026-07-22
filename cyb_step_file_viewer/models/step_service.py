@@ -11,12 +11,6 @@ from .step_to_glb_ocp import convert_step_to_glb_with_names
 _logger = logging.getLogger(__name__)
 
 
-class GlbPart(models.Model):
-    _name = 'glb.part'
-
-    part_name = fields.Char()
-    att_id = fields.Many2one('ir.attachment', string='Attachment', ondelete='cascade')
-    
 
 class StepService(models.TransientModel):
     _name = 'step.file.service'
@@ -38,7 +32,7 @@ class StepService(models.TransientModel):
             return []
 
         # Parse the chunk 0 header
-        chunk_0_length, chunk_0_type = struct.unpack('<II', glb_bytes[12:20])
+        chunk_0_length, chunk_0_type = struct.unpack('<I4s', glb_bytes[12:20])
         if chunk_0_type != b'JSON':
             return []
 
@@ -73,7 +67,11 @@ class StepService(models.TransientModel):
             glb_bytes = base64.b64decode(att_obj.datas)
             part_names = self._extract_names_from_glb_bytes(glb_bytes)
 
-        dict_names = [{"part_name": n, 'att_id': att_id} for n in part_names]
+        dict_names = [
+            {"part_name": n, "att_id": att_id, "part_number": i}
+            for i, n in enumerate(part_names, start=1)
+        ]
+
         self.env['glb.part'].create(dict_names)
 
     def run_attachment_job(self, attachment):
@@ -87,10 +85,6 @@ class StepService(models.TransientModel):
             _logger.error('Invalid glb bytes')
             raise UserError(_('Invalid glb bytes'))
 
-        part_names = False
-        if manifest:
-            part_names = json.dumps(list(manifest.keys()))
-
         # create new GLB attachment
         attachment.write({
             'datas': glb_bytes,
@@ -102,7 +96,7 @@ class StepService(models.TransientModel):
             'public': True,
         })
 
-        self.save_glb_parts(attachment, part_names)
+        self.save_glb_parts(attachment)
                 
         self._notify_user(attachment.id)
         print("============Sent notification============")

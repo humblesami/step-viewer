@@ -1,5 +1,7 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+from odoo.orm.decorators import ondelete
+
 
 class PartSearch(models.Model):
     _name = 'part.search'
@@ -45,6 +47,5 @@ class PartsGroup(models.Model):
 
 class GlbParts(models.Model):
     _inherit = 'glb.part'
-    product_tmpl_id = fields.Many2one('product.template', string='Product')
-    part_group_id = fields.Many2one('parts.group', string='Group')
+    part_group_id = fields.Many2one('parts.group', string='Group', ondelete='cascade')
 
