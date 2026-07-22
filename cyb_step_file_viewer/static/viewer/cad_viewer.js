@@ -205,11 +205,19 @@ function buildUI() {
 
             const circle = document.createElement('div');
             circle.className = 'color-circle';
-            circle.style.backgroundColor = color.hex;
+            
+            // Check if an image is provided, else fallback to solid color
+            if (color.color_image) {
+                circle.style.backgroundImage = `url('${color.color_image}')`;
+                circle.style.backgroundSize = 'cover';
+                circle.style.backgroundPosition = 'center';
+            } else {
+                circle.style.backgroundColor = color.color_value;
+            }
 
             const label = document.createElement('span');
             label.className = 'color-name';
-            label.textContent = color.name;
+            label.textContent = color.color_name;
 
             btn.appendChild(circle);
             btn.appendChild(label);
@@ -219,8 +227,8 @@ function buildUI() {
                 grid.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
 
-                // Apply Color to Meshes
-                applyColorToGroup(group.id, color.hex);
+                // Apply Color/Texture to Meshes
+                applyColorToGroup(group.id, color.color_value, color.color_image);
             };
 
             grid.appendChild(btn);
@@ -231,17 +239,36 @@ function buildUI() {
 
         // Apply default color initially if there are meshes in this group
         if (group.colors.length > 0) {
-            applyColorToGroup(group.id, group.colors[0].hex);
+            applyColorToGroup(group.id, group.colors[0].color_value, group.colors[0].color_image);
         }
     });
 }
 
-function applyColorToGroup(groupId, hexColor) {
+function applyColorToGroup(groupId, hexColor, imageUrl) {
     const meshes = activeGroups[groupId];
     if (meshes) {
         meshes.forEach(mesh => {
-            mesh.material.color.set(hexColor);
-            mesh.material.needsUpdate = true;
+            const hasUVs = mesh.geometry && mesh.geometry.attributes && mesh.geometry.attributes.uv;
+
+            if (imageUrl && hasUVs) {
+                const textureLoader = new THREE.TextureLoader();
+                textureLoader.load(imageUrl, function(texture) {
+                    // Enable repeat wrapping for tiling
+                    texture.wrapS = THREE.RepeatWrapping;
+                    texture.wrapT = THREE.RepeatWrapping;
+                    
+                    mesh.material.map = texture;
+                    mesh.material.color.set(0xffffff); // Reset color to avoid tinting
+                    mesh.material.needsUpdate = true;
+                });
+            } else {
+                // Fallback to solid color if no image or no UV coordinates
+                mesh.material.map = null;
+                if (hexColor) {
+                    mesh.material.color.set(hexColor);
+                }
+                mesh.material.needsUpdate = true;
+            }
         });
     }
 }

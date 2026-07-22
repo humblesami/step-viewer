@@ -80,8 +80,9 @@ class ProductStepViewerController(http.Controller):
                     color_vals = request.env['template.colors.values'].sudo().search([('color_template_id', '=', group.color_template_id.id)])
                     for cv in color_vals:
                         colors.append({
-                            'name': cv.color_value,
-                            'hex': cv.color_value
+                            'color_name': cv.color_name,
+                            'color_image': f'/web/image/template.colors.values/{cv.id}/color_image' if  cv.color_image else '',
+                            'color_value': cv.color_value
                         })
                         
                 search_term = group.part_search_id.search_term
