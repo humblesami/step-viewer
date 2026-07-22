@@ -38,9 +38,12 @@
                     </group>
                     <notebook>
                         <page string="Colors">
+                            <style> td.o_image_cell div[name="color_image"] img {height: 50px} </style>
                             <field name="color_ids">
                                 <list editable="bottom">
-                                    <field name="color_value" string="Color (Hex or Name)" required="1"/>
+                                    <field name="color_image" widget="image" />
+                                    <field name="color_value" wiget="color" string="Color Hex"/>
+                                    <field name="color_name" wiget="color" />
                                 </list>
                             </field>
                         </page>

@@ -9,8 +9,11 @@ class ColorsTemplateValues(models.Model):
     _name = 'template.colors.values'
     _description = 'product_model_colors.product_model_colors'
 
-    color_template_id = fields.Many2one('colors.template')
+    color_name = fields.Char()
     color_value = fields.Char()
+    color_image = fields.Image()
+    color_template_id = fields.Many2one('colors.template')
+
 
 class ProductModelColors(models.Model):
     _name = 'product_model.colors'
