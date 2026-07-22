@@ -11,18 +11,20 @@ from .step_to_glb_ocp import convert_step_to_glb_with_names
 _logger = logging.getLogger(__name__)
 
 
+class GlbPart(models.Model):
+    _name = 'glb.part'
+
+    part_name = fields.Char()
+    att_id = fields.Many2one('ir.attachment', string='Attachment', ondelete='cascade')
+    
 
 class StepService(models.TransientModel):
     _name = 'step.file.service'
     _description = "Step File Service"
 
     def process_attachment(self, attachment):
-        if not attachment.needs_step_conversion():
-            self.make_part_groups(0, attachment)
-            return
-
         # self.with_delay().run_attachment_job(attachment.id)
-        self.run_attachment_job(attachment.id)
+        self.run_attachment_job(attachment)
 
     def _extract_names_from_glb_bytes(self, glb_bytes):
         """Natively parse the JSON chunk of a GLB file to find mesh/node names."""
@@ -63,24 +65,31 @@ class StepService(models.TransientModel):
             _logger.warning("Could not parse GLB JSON chunk for parts: %s", e)
             return []
 
-    def make_part_groups(self, att_id, att_obj=None):
-        if att_obj and att_obj.name and att_obj.name.lower().endswith('.glb') and att_obj.datas:
+    def save_glb_parts(self, att_obj, part_names=None):        
+        if self.env['glb.part'].search([('att_id', '=', att_obj.id)], limit=1):
+            return
+        att_id = att_obj.id
+        if not part_names:
             glb_bytes = base64.b64decode(att_obj.datas)
-            names = self._extract_names_from_glb_bytes(glb_bytes)
-            if names:
-                att_obj.glb_part_names_json = json.dumps(names)
+            part_names = self._extract_names_from_glb_bytes(glb_bytes)
 
-    def run_attachment_job(self, att_id):
+        dict_names = [{"part_name": n, 'att_id': att_id} for n in part_names]
+        self.env['glb.part'].create(dict_names)
+
+    def run_attachment_job(self, attachment):
         print("===============job started===============")
-        attachment = self.env['ir.attachment'].browse(att_id)
-        glb_bytes, manifest = self.conversion_process(att_id, attachment.datas)
+        is_step_file = str(attachment.raw or '').startswith("b\"ISO-10303-21;")                
+        if not is_step_file:
+            self.save_glb_parts(attachment)
+            return
+        glb_bytes, manifest = self.conversion_process(attachment.id, attachment.datas)
         if not glb_bytes:
             _logger.error('Invalid glb bytes')
             raise UserError(_('Invalid glb bytes'))
 
-        part_json_names = False
+        part_names = False
         if manifest:
-            part_json_names = json.dumps(list(manifest.keys()))
+            part_names = json.dumps(list(manifest.keys()))
 
         # create new GLB attachment
         attachment.write({
@@ -89,14 +98,13 @@ class StepService(models.TransientModel):
             'mimetype': 'model/gltf-binary',
             'description': f'Converted from {attachment.name}',
             'is_step_processed': True,
-            'glb_part_names_json': part_json_names,
             'type': 'binary',
             'public': True,
         })
 
-        self.make_part_groups(att_id)
+        self.save_glb_parts(attachment, part_names)
                 
-        self._notify_user(att_id)
+        self._notify_user(attachment.id)
         print("============Sent notification============")
 
     def _notify_user(self, att_id):

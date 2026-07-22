@@ -77,7 +77,7 @@ class ProductStepViewerController(http.Controller):
                 return {'status': 'error', 'message': 'Template not found'}
                 
             groups_data = []
-            for group in product_template.parts_groups:
+            for group in product_template.parts_group_ids:
                 colors = []
                 if group.color_template_id:
                     color_vals = request.env['template.colors.values'].sudo().search([('color_template_id', '=', group.color_template_id.id)])

@@ -23,23 +23,17 @@
                     <group>
                         <field name="step_file_id" invisible="1"/>
                         <field name="step_file_name" invisible="1"/>
-                        <field name="has_glb_parts" invisible="1"/>
                         <div class="o_horizontal_separator">3D Model File</div>
                         <div class="d-flex align-items-center gap-3">
                             <field name="step_file_content" widget="binary" filename="step_file_name" nolabel="1"/>
                             <field name="step_file_id" widget="many2one_3d_viewer" nolabel="1" invisible="not step_file_id"/>                            
                         </div>
                     </group>
-                    <div class="d-flex align-items-center gap-3">
-                        <button name="action_generate_part_names_json" type="object" string="Generate Part Names" invisible="not step_file_id or has_glb_parts" class="btn-primary"/>
-                        <button name="action_view_glb_parts" type="object" string="👁️ View GLB Parts" invisible="not has_glb_parts" class="btn-info"/>
-                    </div>
                     
-                    <div invisible="not has_glb_parts">
-                        <div class="o_horizontal_separator mt-4">Part Groups &amp; Customization</div>
-                        <button name="action_auto_generate_parts_groups" type="object" string="⚡ Auto-Generate Groups" class="btn-secondary mb-2"/>
+                    <div invisible="not glb_part_ids">
+                        <div class="o_horizontal_separator mt-4">Part Groups &amp; Customization</div>                        
                         
-                        <field name="parts_groups" nolabel="1">
+                        <field name="parts_group_ids" nolabel="1">
                             <list>
                                 <field name="group_title" string="Group Name"/>
                                 <field name="color_template_id"/>
@@ -49,10 +43,13 @@
                                 <group>
                                     <field name="group_title" string="Group Name" required="1"/>
                                     <field name="color_template_id" string="Allowed Colors Template"/>
-                                    <field name="part_count" string="Number of 3D Parts" readonly="1"/>
-                                    <field name="chosen_color" string="Current Color" readonly="1"/> 
-                                    <field name="part_search_id"/>                               
-                                </group>
+                                    <field name="part_count" string="Count" readonly="1"/>
+                                </group>    
+                                <field name="part_ids" nolabel="1">
+                                    <list>
+                                        <field name="part_name" string="Part Name"/>
+                                    </list>
+                                </field>                                
                             </form>
                         </field>
                     </div>                    

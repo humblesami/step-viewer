@@ -22,15 +22,18 @@ class PartSearch(models.Model):
                     f"Strict Validation Failed: Cannot add '{record.search_term}' because it overlaps with existing global term '{term.search_term}'."
                 )
 
+
 class PartsGroup(models.Model):
     _name = 'parts.group'
     
     product_tmpl_id = fields.Many2one('product.template')
     group_title = fields.Char()
-    part_count = fields.Integer('Number of Parts', default=0)
-    part_search_id = fields.Many2one('part.search')
     color_template_id = fields.Many2one('colors.template')
-    chosen_color = fields.Char()
+    part_count = fields.Integer('Number of Parts', default=0, readonly=True)
+    part_ids = fields.One2many('glb.part', 'part_group_id')
+    
+    # part_search_id = fields.Many2one('part.search')
+    # chosen_color = fields.Char()
 
     def name_get(self):
         result = []
@@ -38,3 +41,10 @@ class PartsGroup(models.Model):
             name = group.group_title or 'Unnamed Group'
             result.append((group.id, f"{name} ({group.part_count} parts)"))
         return result
+
+
+class GlbParts(models.Model):
+    _inherit = 'glb.part'
+    product_tmpl_id = fields.Many2one('product.template', string='Product')
+    part_group_id = fields.Many2one('parts.group', string='Group')
+
