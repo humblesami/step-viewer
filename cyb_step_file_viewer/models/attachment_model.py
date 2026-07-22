@@ -18,6 +18,7 @@ class IrAttachment(models.Model):
 
 class GlbPart(models.Model):
     _name = 'glb.part'
+    _rec_name = 'part_name'
 
     part_name = fields.Char()
     part_number = fields.Integer(default=0)
