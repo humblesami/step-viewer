@@ -681,8 +681,8 @@ export class CadViewer {
             <div class="popover o_stp_parts_popup ${collapseClass}" style="width: ${popupWidth}; ${resizeStyle}">
                 
                 <!-- Toolbar Header Area -->
-                <div class="sidebar-header" style="border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; margin-bottom: 10px; display: flex; flex-direction: ${flexDir}; align-items: flex-start; gap: 8px;">
-                    <button class="btn-sidebar-collapse btn btn-dark" style="background: none; border: none; color: #333333; padding: 5px 10px; cursor: pointer;" title="Toggle Sidebar">
+                <div class="sidebar-header" style="flex-direction: ${flexDir}">
+                    <button class="btn-sidebar-collapse btn btn-dark" title="Toggle Sidebar">
                         <i class="fa ${chevronClass}"></i>
                     </button>
                     
@@ -1481,13 +1481,12 @@ export class CadViewer {
                 <div id="popovers-container" style="flex-shrink: 0; position: relative; height: 100%;"></div>
                 <div id="three-container" style="flex-grow: 1; height: 100%; cursor: grab; position: relative; overflow: hidden;"></div>
                 <div id="loader-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: none; justify-content: center; align-items: center; background: rgba(0,0,0,0.6); pointer-events: auto;">
-                    <div class="o_stp_glass_loader">
-                        <div class="glass-orb"><div class="inner-spin"></div></div>
-                        <div class="loader-text text-center">
-                            <h2>3d Model Viewer</h2>
-                            <div class="progress-bar-container"><div class="progress-fill" style="width: 100%; animation: none;"></div></div>
-                            <p class="message"></p>
-                        </div>
+                    <div class="o_stp_glass_loader" style="">                        
+                        <h2>3d Model Viewer</h2>
+                        <div class="" style="display: flex;justify-content: center;">
+                            <div class="model-loader-spinner"></div>                            
+                        </div>                        
+                        <p class="message">Loading...</p>
                     </div>
                 </div>
             </div>
@@ -1702,7 +1701,7 @@ async function initApp() {
             alert('Error saving model: ' + error);
         }
     }
-        window.saveCustomizations = saveCustomizations;
+    window.saveCustomizations = saveCustomizations;
 }
 
 if (document.readyState === 'loading') {
