@@ -105,6 +105,7 @@ export class CadViewer {
             showEdgePopup: false,
             searchQuery: 'others',
             invertSearch: false,
+            isSidebarCollapsed: false,
         };
 
         this.needsRender = true;
@@ -592,56 +593,100 @@ export class CadViewer {
             return [];
         }
 
+        
+        let groupsDict = {'Others': []}
         const groups = this.options.odooPayload.groups;
-        const result = [];
-        const matchedPartIds = new Set();
+        console.log(1111, groups, this.state.parts);
 
-        groups.forEach(group => {
-            const groupParts = [];
-            if (group.search_terms) {
-                const terms = group.search_terms.toLowerCase().split(',').map(t => t.trim()).filter(t => t);
-                this.state.parts.forEach(part => {
-                    const name = part.name ? part.name.toLowerCase() : '';
-                    if (terms.some(term => name.includes(term))) {
-                        groupParts.push(part);
-                        matchedPartIds.add(part.id);
-                    }
+        this.state.parts.forEach(part => {
+            if (part.isAssembly) {
+                let unmatched = true;
+                groups.forEach(group => {
+                    group.parts.forEach(part => {
+                        if(part.name == part.part_name) {
+                            if(groupsDict[group.displayName]) {
+                                groupsDict[group.displayName].push(part);
+                            } else {
+                                groupsDict[group.displayName] = [part]
+                            }
+                            unmatched = false;
+                        }
+                    })
                 });
+                if(unmatched) {
+                    groupsDict['Others'].push(part);
+                }   
             }
-            result.push({
-                ...group,
-                parts: groupParts,
-                isOthers: false
-            });
         });
 
-        const otherParts = this.state.parts.filter(p => !matchedPartIds.has(p.id));
-        if (otherParts.length > 0) {
-            result.push({
-                name: `Others (${otherParts.length} parts)`,
-                parts: otherParts,
-                isOthers: true
-            });
+        let results = [];
+        for(const key in groupsDict) {
+            results.push({
+                displayName: key,
+                name: key,
+                isOthers: key == 'Others',
+                parts: groupsDict[key]
+            })
         }
 
-        return result;
+        console.log(7888, results);
+        return results;
     }
 
     renderGroupsSidebar() {
+        console.log(77777, this.options.odooPayload);
         if (!this.options.odooPayload || !this.options.odooPayload.groups) return '';
         
         const groups = this.getStructuralGroups();
+        
+        const collapseClass = this.state.isSidebarCollapsed ? 'sidebar-collapsed' : '';
+        const popupWidth = this.state.isSidebarCollapsed ? '50px' : '25vw';
+        const displayGroups = this.state.isSidebarCollapsed ? 'none' : 'block';
+        const flexDir = this.state.isSidebarCollapsed ? 'column' : 'row';
+        const chevronClass = this.state.isSidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left';
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasLineId = urlParams.has('line_id');
+
+        console.log(9999, groups);
+
         return `
-            <div class="popover o_stp_parts_popup" style="width: 25vw; display: block; position: absolute; left: 10px; top: 10px; z-index: 1000; background: rgba(30,30,30,0.95); padding: 15px; border-radius: 8px; color: white;">
-                <div class="sidebar-header" style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px;">
-                    <h3 style="margin: 0; font-size: 16px; font-family: Inter, sans-serif;">Product Parts</h3>
+            <div class="popover o_stp_parts_popup ${collapseClass}" style="width: ${popupWidth}; transition: width 0.3s; display: block; position: absolute; left: 10px; top: 10px; z-index: 1000; background: rgba(30,30,30,0.95); padding: 15px; border-radius: 8px; color: white; overflow: hidden;">
+                
+                <!-- Toolbar Header Area -->
+                <div class="sidebar-header" style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px; display: flex; flex-direction: ${flexDir}; justify-content: space-between; align-items: center; gap: 8px;">
+                    <div style="display: flex; flex-direction: ${flexDir}; gap: 5px; flex-wrap: wrap;" class="sidebar-toolbar-buttons">
+                        <button class="btn btn-dark tool-btn tool-btn-zoom-in" title="Zoom In" style="padding: 5px 10px;">
+                            <i class="fa fa-search-plus"></i>
+                        </button>
+                        <button class="btn btn-dark tool-btn tool-btn-zoom-out" title="Zoom Out" style="padding: 5px 10px;">
+                            <i class="fa fa-search-minus"></i>
+                        </button>
+                        <button class="btn btn-dark tool-btn tool-btn-refresh" title="Reset View" style="padding: 5px 10px;">
+                            <i class="fa fa-refresh"></i>
+                        </button>
+                        <button class="btn btn-dark tool-btn tool-btn-snapshot" title="Take Photo (PNG)" style="padding: 5px 10px;">
+                            <i class="fa fa-camera"></i>
+                        </button>
+                        ${hasLineId ? `
+                        <button class="btn btn-dark tool-btn tool-btn-save-finished" title="Save Finished 3D Model" style="padding: 5px 10px; color: #4CAF50;">
+                            <i class="fa fa-save"></i>
+                        </button>
+                        ` : ''}
+                    </div>
+                    
+                    <button class="btn-sidebar-collapse btn btn-dark" style="background: none; border: none; color: white; padding: 5px 10px;" title="Toggle Sidebar">
+                        <i class="fa ${chevronClass}"></i>
+                    </button>
                 </div>
-                <div class="sidebar-content" style="max-height: calc(100vh - 100px); overflow-y: auto;">
+                
+                <!-- Group List Area -->
+                <div class="sidebar-content" style="display: ${displayGroups}; max-height: calc(100vh - 100px); overflow-y: auto;">
                     ${groups.map((group, groupIdx) => `
-                        <div class="group-item" style="margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 4px;">
+                        <div class="group-item">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <strong style="font-family: Inter, sans-serif; font-size: 14px;">
-                                    ${group.isOthers ? group.name : `${group.name} (${group.parts.length} parts)`}
+                                <strong class="group-name">
+                                    ${group.isOthers ? "Others" : `${group.displayName} (${group.parts.length} parts)`}
                                 </strong>
                                 <div class="group-actions" style="display: flex; align-items: center; gap: 8px;">
                                     <input type="color" class="group-color-picker mini-color-picker" data-group-index="${groupIdx}" title="Group Color" value="#ffffff" style="width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;">
@@ -661,6 +706,54 @@ export class CadViewer {
         if (!this.options.odooPayload || !this.options.odooPayload.groups) return;
         
         const groups = this.getStructuralGroups();
+
+        // Collapse toggle binding
+        const collapseBtn = popoversContainer.querySelector('.btn-sidebar-collapse');
+        if (collapseBtn) {
+            collapseBtn.onclick = () => {
+                this.state.isSidebarCollapsed = !this.state.isSidebarCollapsed;
+                this.updateUI();
+            };
+        }
+
+        // Toolbar tools binding
+        const zoomInBtn = popoversContainer.querySelector('.tool-btn-zoom-in');
+        if (zoomInBtn) zoomInBtn.onclick = () => this.zoomIn();
+        
+        const zoomOutBtn = popoversContainer.querySelector('.tool-btn-zoom-out');
+        if (zoomOutBtn) zoomOutBtn.onclick = () => this.zoomOut();
+        
+        const refreshBtn = popoversContainer.querySelector('.tool-btn-refresh');
+        if (refreshBtn) refreshBtn.onclick = () => this.resetView();
+        
+        const snapshotBtn = popoversContainer.querySelector('.tool-btn-snapshot');
+        if (snapshotBtn) snapshotBtn.onclick = () => this.takeSnapshot();
+        
+        const saveBtn = popoversContainer.querySelector('.tool-btn-save-finished');
+        if (saveBtn) {
+            saveBtn.onclick = () => {
+                this.setProcessing(true, 'Saving Customizations...');
+                setTimeout(() => {
+                    let dt1 = Date.now();
+                    const modifications = this.state.parts.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        color: p.color,
+                        visible: p.visible
+                    }));
+                    const customizationJSON = JSON.stringify({ parts: modifications });
+                    
+                    if (window.saveCustomizations) {
+                        window.saveCustomizations(customizationJSON, dt1).finally(() => {
+                            this.setProcessing(false);
+                        });
+                    } else {
+                        console.error('save To Odoo function not found globally');
+                        this.setProcessing(false);
+                    }
+                }, 50);
+            };
+        }
         
         // Group level color binding
         popoversContainer.querySelectorAll('.group-color-picker').forEach(picker => {
@@ -1271,48 +1364,13 @@ export class CadViewer {
         this.container.innerHTML = `
             <div class="o_stp_preview_container">
                 <div id="three-container" style="width: 100%; height: 100%; cursor: grab;"></div>
-                
                 <div id="popovers-container"></div>
-                
-                <div class="o_stp_bottom_toolbar">
-                    <div class="btn-group">
-                        <button class="btn btn-dark tool-btn tool-btn-zoom-in" title="Zoom In">
-                            <i class="fa fa-search-plus"></i>
-                        </button>
-                        <button class="btn btn-dark tool-btn tool-btn-zoom-out" title="Zoom Out">
-                            <i class="fa fa-search-minus"></i>
-                        </button>
-                        <button class="btn btn-dark tool-btn tool-btn-refresh" title="Reset View">
-                            <i class="fa fa-refresh"></i>
-                        </button>
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div class="btn-group">
-                        <button class="btn btn-dark tool-btn tool-btn-snapshot" title="Take Photo (PNG)">
-                            <i class="fa fa-camera"></i>
-                        </button>
-                        <button class="btn btn-dark tool-btn tool-btn-download" title="Download Model (GLB)">
-                            <i class="fa fa-download"></i>
-                        </button>
-                    </div>
-                </div>
-
                 <div id="loader-container"></div>
             </div>
         `;
 
-        // Bind toolbar events
-        this.container.querySelector('.tool-btn-zoom-in').onclick = () => this.zoomIn();
-        this.container.querySelector('.tool-btn-zoom-out').onclick = () => this.zoomOut();
-        this.container.querySelector('.tool-btn-refresh').onclick = () => this.resetView();
-        this.container.querySelector('.tool-btn-snapshot').onclick = () => this.takeSnapshot();
-        this.container.querySelector('.tool-btn-download').onclick = () => this.downloadModel();
-        //this.container.querySelector('.close-btn').onclick = () => this.interruptAndClose();
-
         this.updateUI();
-        this.toggleSidebar();
+        // this.toggleSidebar(); // Removed so we don't automatically open the old sidebar logic
     }
 
     setProcessing(isProcessing, message = 'Processing...') {
@@ -1464,7 +1522,7 @@ async function initApp() {
         } catch (e) { console.error('Error fetching customization', e); }
     }
 
-    let odooPayload = null;
+    let dataFromServer = null;
     if (product_tmpl_id) {
         try {
             const configResponse = await fetch('/step_file_viewer/get_cad_viewer_config', {
@@ -1478,7 +1536,7 @@ async function initApp() {
             });
             const result = await configResponse.json();
             if (result.result && result.result.status === 'success') {
-                odooPayload = result.result;
+                dataFromServer = result.result;
             }
         } catch (e) {
             console.error("Failed to fetch config", e);
@@ -1491,14 +1549,14 @@ async function initApp() {
         },
         customization: customizationData,
         productColors: productColorsData,
-        odooPayload: odooPayload
+        odooPayload: dataFromServer
     });
 
     if ((!product_id && !line_id) || hide_save) {
         return;
     }
 
-    async function saveToOdoo(customizationJSON, dt1) {
+    async function saveCustomizations(customizationJSON, dt1) {
         try {
             let url = '/step_file_viewer/save_sale_model';
 
@@ -1537,31 +1595,7 @@ async function initApp() {
             alert('Error saving model: ' + error);
         }
     }
-    function addToCartSaveModelBtn() {
-        const saveFinishedModelBtn = document.createElement('button');
-        saveFinishedModelBtn.className = 'btn btn-dark tool-btn tool-btn-save-finished';
-        saveFinishedModelBtn.title = 'Save Finished 3D Model';
-        saveFinishedModelBtn.innerHTML = '<i class="fa fa-save"></i>';
-        document.querySelector('.o_stp_bottom_toolbar .tool-btn-download').after(saveFinishedModelBtn);
-
-        saveFinishedModelBtn.onclick = () => {
-            viewer.setProcessing(true, 'Saving Customizations...');
-            setTimeout(() => {
-                let dt1 = Date.now();
-                const modifications = viewer.state.parts.map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    color: p.color,
-                    visible: p.visible
-                }));
-                const customizationJSON = JSON.stringify({ parts: modifications });
-                saveToOdoo(customizationJSON, dt1).finally(() => {
-                    viewer.setProcessing(false);
-                });
-            }, 50);
-        };
-    }
-    addToCartSaveModelBtn();
+        window.saveCustomizations = saveCustomizations;
 }
 
 if (document.readyState === 'loading') {
@@ -1569,3 +1603,4 @@ if (document.readyState === 'loading') {
 } else {
     initApp();
 }
+console.log(545454);

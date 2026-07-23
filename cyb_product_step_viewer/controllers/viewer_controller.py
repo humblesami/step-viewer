@@ -87,8 +87,17 @@ class ProductStepViewerController(http.Controller):
                             'color_value': cv.color_value
                         })
 
+                parts = []
+
+                for part in group.part_ids:
+                    parts.append({
+                        'part_name': part.part_name,
+                        'part_id': part.id,
+                    })
+
                 groups_data.append({
                     'id': f"group_{group.id}",
+                    'parts': parts,
                     'displayName': group.group_title or f"Group {group.id}",
                     'parts_count': group.part_count,
                     'colors': colors
