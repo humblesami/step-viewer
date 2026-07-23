@@ -639,22 +639,27 @@ export class CadViewer {
         
         const groups = this.getStructuralGroups();
         
+        let savedWidth = localStorage.getItem('left_popup_width') || '10vw';
+        
         const collapseClass = this.state.isSidebarCollapsed ? 'sidebar-collapsed' : '';
-        const popupWidth = this.state.isSidebarCollapsed ? '50px' : '25vw';
+        const popupWidth = this.state.isSidebarCollapsed ? '50px' : savedWidth;
         const displayGroups = this.state.isSidebarCollapsed ? 'none' : 'block';
         const flexDir = this.state.isSidebarCollapsed ? 'column' : 'row';
         const chevronClass = this.state.isSidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left';
+        const resizeStyle = this.state.isSidebarCollapsed ? '' : 'resize: horizontal;';
         
         const urlParams = new URLSearchParams(window.location.search);
         const hasLineId = urlParams.has('line_id');
 
-        console.log(9999, groups);
-
         return `
-            <div class="popover o_stp_parts_popup ${collapseClass}" style="width: ${popupWidth}; transition: width 0.3s; display: block; position: absolute; left: 10px; top: 10px; z-index: 1000; background: rgba(30,30,30,0.95); padding: 15px; border-radius: 8px; color: white; overflow: hidden;">
+            <div class="popover o_stp_parts_popup ${collapseClass}" style="width: ${popupWidth}; ${resizeStyle} display: block; position: absolute; left: 10px; top: 10px; z-index: 1000; background: rgba(30,30,30,0.95); padding: 15px; border-radius: 8px; color: white; overflow: hidden; max-width: 50vw; min-width: 50px;">
                 
                 <!-- Toolbar Header Area -->
-                <div class="sidebar-header" style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px; display: flex; flex-direction: ${flexDir}; justify-content: space-between; align-items: center; gap: 8px;">
+                <div class="sidebar-header" style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px; display: flex; flex-direction: ${flexDir}; align-items: flex-start; gap: 8px;">
+                    <button class="btn-sidebar-collapse btn btn-dark" style="background: none; border: none; color: white; padding: 5px 10px; cursor: pointer;" title="Toggle Sidebar">
+                        <i class="fa ${chevronClass}"></i>
+                    </button>
+                    
                     <div style="display: flex; flex-direction: ${flexDir}; gap: 5px; flex-wrap: wrap;" class="sidebar-toolbar-buttons">
                         <button class="btn btn-dark tool-btn tool-btn-zoom-in" title="Zoom In" style="padding: 5px 10px;">
                             <i class="fa fa-search-plus"></i>
@@ -674,10 +679,6 @@ export class CadViewer {
                         </button>
                         ` : ''}
                     </div>
-                    
-                    <button class="btn-sidebar-collapse btn btn-dark" style="background: none; border: none; color: white; padding: 5px 10px;" title="Toggle Sidebar">
-                        <i class="fa ${chevronClass}"></i>
-                    </button>
                 </div>
                 
                 <!-- Group List Area -->
@@ -714,6 +715,25 @@ export class CadViewer {
                 this.state.isSidebarCollapsed = !this.state.isSidebarCollapsed;
                 this.updateUI();
             };
+        }
+
+        // Resize observer to save width
+        const popupEl = popoversContainer.querySelector('.o_stp_parts_popup');
+        if (popupEl && !this.state.isSidebarCollapsed) {
+            if (this._popupResizeObserver) {
+                this._popupResizeObserver.disconnect();
+            }
+            this._popupResizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    if (entry.target === popupEl) {
+                        const pxWidth = popupEl.offsetWidth;
+                        if (pxWidth > 60) {
+                            localStorage.setItem('left_popup_width', pxWidth + 'px');
+                        }
+                    }
+                }
+            });
+            this._popupResizeObserver.observe(popupEl);
         }
 
         // Toolbar tools binding
