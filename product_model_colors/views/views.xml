@@ -65,11 +65,11 @@
               action="action_colors_template"
               sequence="1"/>
 
-    <menuitem id="menu_part_search_config"
+    <!-- <menuitem id="menu_part_search_config"
             name="Model Parts Search Terms"
             parent="sale.menu_sale_config"
             action="action_part_search"
-            sequence="2"/>
+            sequence="2"/> -->
 
   </data>
 </odoo>

@@ -20,7 +20,7 @@ body.viewer-body {
     position: absolute; left: 0px; top: 0px; z-index: 1000; 
     padding: 15px; color: #333333; 
     max-width: 50vw; min-width: 50px;
-    max-height: 95vh;
+    height: 95vh;
     background-color: #ffffff;
     border: 1px solid #cccccc;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);

@@ -713,8 +713,9 @@ export class CadViewer {
                             <div class="color-palette-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; justify-items: center;">
                                 ${group.colors.map((c, colorIdx) => {
                                     const bgStyle = c.color_image ? `background-image: url('${c.color_image}'); background-size: cover; background-position: center;` : `background-color: ${c.color_value};`;
+                                    const imageAttr = c.color_image ? `data-color-image="${c.color_image}"` : '';
                                     return `
-                                    <button class="color-btn" data-group-index="${groupIdx}" data-color-value="${c.color_value}" title="${c.color_name}" style="border: 2px solid transparent; border-radius: 50%; width: 30px; height: 30px; padding: 0; cursor: pointer; ${bgStyle} box-shadow: 0 0 3px rgba(0,0,0,0.5);"></button>
+                                    <button class="color-btn" data-group-index="${groupIdx}" data-color-value="${c.color_value}" ${imageAttr} title="${c.color_name}" style="border: 2px solid transparent; border-radius: 50%; width: 30px; height: 30px; padding: 0; cursor: pointer; ${bgStyle} box-shadow: 0 0 3px rgba(0,0,0,0.5);"></button>
                                     `;
                                 }).join('')}
                             </div>
@@ -800,6 +801,7 @@ export class CadViewer {
             btn.onclick = (e) => {
                 const groupIdx = parseInt(e.currentTarget.dataset.groupIndex, 10);
                 const colorValue = e.currentTarget.dataset.colorValue;
+                const colorImage = e.currentTarget.dataset.colorImage;
                 const group = groups[groupIdx];
                 
                 // Update active styling
@@ -811,12 +813,35 @@ export class CadViewer {
 
                 group.parts.forEach(p => {
                     p.color = colorValue;
+                    p.colorImage = colorImage;
                     const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
                     if (partObj) {
                         partObj.traverse(child => {
                             if (child.isMesh && child.material) {
                                 const mat = child.material.clone();
-                                mat.color.set(colorValue);
+                                const hasUVs = child.geometry && child.geometry.attributes && child.geometry.attributes.uv;
+                                
+                                if (colorImage && hasUVs) {
+                                    if (!this.textureCache) this.textureCache = new Map();
+                                    let texture = this.textureCache.get(colorImage);
+                                    if (!texture) {
+                                        const textureLoader = new THREEModules.TextureLoader();
+                                        texture = textureLoader.load(colorImage, () => {
+                                            this.rebuildMergedModel();
+                                        });
+                                        texture.wrapS = THREEModules.RepeatWrapping;
+                                        texture.wrapT = THREEModules.RepeatWrapping;
+                                        texture.repeat.set(20, 20); 
+                                        this.textureCache.set(colorImage, texture);
+                                    }
+                                    
+                                    mat.map = texture;
+                                    mat.color.setHex(0xffffff);
+                                } else {
+                                    mat.map = null;
+                                    mat.color.set(colorValue);
+                                }
+                                
                                 mat.needsUpdate = true;
                                 child.material = mat;
                             }
