@@ -592,7 +592,6 @@ export class CadViewer {
         if (!this.options.odooPayload || !this.options.odooPayload.groups) {
             return [];
         }
-
         
         let groupsDict = {'Others': []}
         const groups = this.options.odooPayload.groups;
@@ -717,24 +716,22 @@ export class CadViewer {
             };
         }
 
-        // Resize observer to save width
-        const popupEl = popoversContainer.querySelector('.o_stp_parts_popup');
-        if (popupEl && !this.state.isSidebarCollapsed) {
-            if (this._popupResizeObserver) {
-                this._popupResizeObserver.disconnect();
-            }
-            this._popupResizeObserver = new ResizeObserver(entries => {
-                for (let entry of entries) {
-                    if (entry.target === popupEl) {
-                        const pxWidth = popupEl.offsetWidth;
-                        if (pxWidth > 60) {
-                            localStorage.setItem('left_popup_width', pxWidth + 'px');
-                        }
-                    }
-                }
-            });
-            this._popupResizeObserver.observe(popupEl);
+        // Save width only after the user finishes resizing (mouseup/touchend)
+        if (this._saveWidthHandler) {
+            document.removeEventListener('mouseup', this._saveWidthHandler);
+            document.removeEventListener('touchend', this._saveWidthHandler);
         }
+        this._saveWidthHandler = () => {
+            const popupEl = popoversContainer.querySelector('.o_stp_parts_popup');
+            if (popupEl && !this.state.isSidebarCollapsed) {
+                const pxWidth = popupEl.offsetWidth;
+                if (pxWidth > 60) {
+                    localStorage.setItem('left_popup_width', pxWidth + 'px');
+                }
+            }
+        };
+        document.addEventListener('mouseup', this._saveWidthHandler);
+        document.addEventListener('touchend', this._saveWidthHandler);
 
         // Toolbar tools binding
         const zoomInBtn = popoversContainer.querySelector('.tool-btn-zoom-in');
