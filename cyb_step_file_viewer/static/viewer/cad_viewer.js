@@ -824,26 +824,7 @@ export class CadViewer {
                 const color_image = e.currentTarget.dataset.colorImage;
                 const group = uiPartGroups[groupIdx];
                 
-                if (color_image) {
-                    let missingUVs = false;
-                    group.parts.forEach(p => {
-                        const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
-                        if (!partObj) return;
-                        partObj.traverse(child => {
-                            if (child.isMesh && child.geometry && !child.geometry.attributes.uv) {
-                                missingUVs = true;
-                            }
-                        });
-                    });
 
-                    if (missingUVs && e.currentTarget.dataset.fallback !== "true") {
-                        alert("Some 3D parts in this group do not support image textures (missing UV maps).\n\nClick this color again to apply the image where possible, and solid hex color elsewhere.");
-                        e.currentTarget.dataset.fallback = "true";
-                        return;
-                    }
-                }
-                
-                e.currentTarget.dataset.fallback = "false";
                 
                 // Update active styling
                 const grid = e.currentTarget.closest('.color-palette-grid');
@@ -863,28 +844,8 @@ export class CadViewer {
                         if (!(child.isMesh && child.material)) return;
 
                         const mat = child.material.clone();
-                        const hasUVs = child.geometry && child.geometry.attributes && child.geometry.attributes.uv;
-                        
-                        if (color_image && hasUVs) {
-                            if (!this.textureCache) this.textureCache = new Map();
-                            let texture = this.textureCache.get(color_image);
-                            if (!texture) {
-                                const textureLoader = new THREEModules.TextureLoader();
-                                texture = textureLoader.load(color_image, () => {
-                                    this.rebuildMergedModel();
-                                });
-                                texture.wrapS = THREEModules.RepeatWrapping;
-                                texture.wrapT = THREEModules.RepeatWrapping;
-                                texture.repeat.set(20, 20); 
-                                this.textureCache.set(color_image, texture);
-                            }
-                            
-                            mat.map = texture;
-                            mat.color.setHex(0xffffff);
-                        } else {
-                            mat.map = null;
-                            mat.color.set(colorValue);
-                        }
+                        mat.map = null;
+                        mat.color.set(colorValue);
                         
                         mat.needsUpdate = true;
                         child.material = mat;
