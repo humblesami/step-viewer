@@ -669,8 +669,8 @@ export class CadViewer {
             <div class="popover o_stp_parts_popup ${collapseClass}" style="width: ${popupWidth}; ${resizeStyle}">
                 
                 <!-- Toolbar Header Area -->
-                <div class="sidebar-header" style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px; display: flex; flex-direction: ${flexDir}; align-items: flex-start; gap: 8px;">
-                    <button class="btn-sidebar-collapse btn btn-dark" style="background: none; border: none; color: white; padding: 5px 10px; cursor: pointer;" title="Toggle Sidebar">
+                <div class="sidebar-header" style="border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; margin-bottom: 10px; display: flex; flex-direction: ${flexDir}; align-items: flex-start; gap: 8px;">
+                    <button class="btn-sidebar-collapse btn btn-dark" style="background: none; border: none; color: #333333; padding: 5px 10px; cursor: pointer;" title="Toggle Sidebar">
                         <i class="fa ${chevronClass}"></i>
                     </button>
                     
@@ -699,12 +699,12 @@ export class CadViewer {
                 <div class="sidebar-content" style="display: ${displayGroups};">
                     ${groupsList.map((group, groupIdx) => `
                         <div class="group-item">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="group-header">
                                 <strong class="group-name">
                                     ${group.isOthers ? "Others" : `${group.displayName} (${group.parts.length} parts)`}
                                 </strong>
                                 <div class="group-actions" style="display: flex; align-items: center; gap: 8px;">
-                                    <button class="btn-vis-group" data-group-index="${groupIdx}" style="background: none; border: none; color: white; cursor: pointer;">
+                                    <button class="btn-vis-group" data-group-index="${groupIdx}" style="background: none; border: none; color: #333333; cursor: pointer;">
                                         <i class="fa fa-eye"></i>
                                     </button>
                                 </div>

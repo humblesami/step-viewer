@@ -6,17 +6,24 @@ body.viewer-body {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 10px;
 }
 .viewer-body .group-item{
-    margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 4px;
+    margin-bottom: 10px; background: #f8f9fa; border: 1px solid #e9ecef; 
+    padding: 10px; border-radius: 4px;
+}
+.viewer-body .group-item .group-header{
+    display: flex;justify-content: space-between;align-items: center;
+    background-color: #dcdcdc;padding: 9px;border-radius: 5px;
 }
 .viewer-body .group-color-picker{
     width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;
 }
 .viewer-body .o_stp_parts_popup{
     position: absolute; left: 0px; top: 0px; z-index: 1000; 
-    padding: 15px; color: white; 
+    padding: 15px; color: #333333; 
     max-width: 50vw; min-width: 50px;
     max-height: 95vh;
-    background-color: #7c6a6a;
+    background-color: #ffffff;
+    border: 1px solid #cccccc;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     overflow: auto;
 }
 .viewer-body .sidebar-toolbar-buttons button{

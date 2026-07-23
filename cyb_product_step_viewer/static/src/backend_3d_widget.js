@@ -20,6 +20,9 @@ class CADViewerDialog extends Component {
                 .modal-dialog .modal-content {
                     height: 100vh;
                 }
+                .modal-body {
+                    padding:0;
+                }
             </style>
             <div style="height: calc(100vh - 120px); width: 100%;">
                 <iframe t-att-src="props.src" style="width: 100%; height: 100%; border: none;"/>
