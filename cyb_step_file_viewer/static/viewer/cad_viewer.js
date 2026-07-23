@@ -39,6 +39,62 @@ async function cacheModel(url, buffer) {
     } catch (e) { console.warn('Cache failed', e); }
 }
 
+function applyTriplanarMapping(material, textureScale = 0.05) {
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.triplanarScale = { value: textureScale };
+
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <common>',
+            `
+            #include <common>
+            varying vec3 vWorldPos;
+            varying vec3 vWorldNormal;
+            `
+        );
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <worldpos_vertex>',
+            `
+            #include <worldpos_vertex>
+            vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+            vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+            `
+        );
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <common>',
+            `
+            #include <common>
+            uniform float triplanarScale;
+            varying vec3 vWorldPos;
+            varying vec3 vWorldNormal;
+            
+            vec4 getTriplanarMap(sampler2D map) {
+                vec3 blending = abs(vWorldNormal);
+                blending = normalize(max(blending, 0.00001)); 
+                float b = (blending.x + blending.y + blending.z);
+                blending /= vec3(b, b, b);
+                
+                vec4 xaxis = texture2D(map, vWorldPos.yz * triplanarScale);
+                vec4 yaxis = texture2D(map, vWorldPos.xz * triplanarScale);
+                vec4 zaxis = texture2D(map, vWorldPos.xy * triplanarScale);
+                
+                return xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
+            }
+            `
+        );
+        
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <map_fragment>',
+            `
+            #ifdef USE_MAP
+                vec4 sampledDiffuseColor = getTriplanarMap(map);
+                diffuseColor *= sampledDiffuseColor;
+            #endif
+            `
+        );
+    };
+}
+
 export class CadViewer {
     constructor(container, fileUrl, options = {}) {
         this.container = container;
@@ -844,8 +900,27 @@ export class CadViewer {
                         if (!(child.isMesh && child.material)) return;
 
                         const mat = child.material.clone();
-                        mat.map = null;
-                        mat.color.set(colorValue);
+                        
+                        if (color_image) {
+                            if (!this.textureCache) this.textureCache = new Map();
+                            let texture = this.textureCache.get(color_image);
+                            if (!texture) {
+                                const textureLoader = new THREEModules.TextureLoader();
+                                texture = textureLoader.load(color_image, () => {
+                                    this.rebuildMergedModel();
+                                });
+                                texture.wrapS = THREEModules.RepeatWrapping;
+                                texture.wrapT = THREEModules.RepeatWrapping;
+                                this.textureCache.set(color_image, texture);
+                            }
+                            
+                            applyTriplanarMapping(mat, 0.02);
+                            mat.map = texture;
+                            mat.color.setHex(0xffffff);
+                        } else {
+                            mat.map = null;
+                            mat.color.set(colorValue);
+                        }
                         
                         mat.needsUpdate = true;
                         child.material = mat;
@@ -854,6 +929,8 @@ export class CadViewer {
                 this.rebuildMergedModel();
             };
         });
+
+        console.log(777);
 
         // Group level visibility binding
         popoversContainer.querySelectorAll('.btn-vis-group').forEach(btn => {
