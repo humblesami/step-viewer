@@ -10,7 +10,7 @@ class ProductStepViewerController(http.Controller):
     def restore_original_model(self, **kwargs):
         try:
             line_id = kwargs.get('line_id')
-            access_token = kwargs.get('access_token')
+            token_string = kwargs.get('access_token')
 
             if not line_id:
                 return {'status': 'error', 'message': 'Missing line id'}
@@ -19,8 +19,8 @@ class ProductStepViewerController(http.Controller):
             if not sale_order_line.exists():
                 return {'status': 'error', 'message': 'Invalid line id'}
 
-            if not request.env.user.has_group('base.group_user') and access_token:
-                if sale_order_line.order_id.access_token != access_token:
+            if not request.env.user.has_group('base.group_user') and token_string:
+                if sale_order_line.order_id.access_token != token_string:
                      return {'status': 'error', 'message': 'Invalid access token'}
 
             if sale_order_line.product_id.step_file_id:
@@ -36,7 +36,7 @@ class ProductStepViewerController(http.Controller):
     def get_customization(self, **kwargs):
         try:
             line_id = kwargs.get('line_id')
-            access_token = kwargs.get('access_token')
+            token_string = kwargs.get('access_token')
 
             customization_json = False
 
@@ -44,8 +44,8 @@ class ProductStepViewerController(http.Controller):
                 sale_order_line = request.env['sale.order.line'].sudo().browse(int(line_id))
                 if not sale_order_line.exists():
                     return {'status': 'error', 'message': 'Invalid line id'}
-                if not request.env.user.has_group('base.group_user') and access_token:
-                    if sale_order_line.order_id.access_token != access_token:
+                if not request.env.user.has_group('base.group_user') and token_string:
+                    if sale_order_line.order_id.access_token != token_string:
                         return {'status': 'error', 'message': 'Invalid access token'}
                 customization_json = sale_order_line.model_customization_json
             else:
@@ -123,7 +123,7 @@ class ProductStepViewerController(http.Controller):
             customization_json = kwargs.get('customization_json')
             product_id = kwargs.get('product_id')
             passed_line_id = kwargs.get('line_id')
-            access_token = kwargs.get('access_token')
+            token_string = kwargs.get('access_token')
 
             sale_order_line = None
 
@@ -131,8 +131,8 @@ class ProductStepViewerController(http.Controller):
                 sale_order_line = request.env['sale.order.line'].sudo().browse(int(passed_line_id))
                 if not sale_order_line.exists():
                     return {'status': 'error', 'message': 'Invalid line id'}
-                if not request.env.user.has_group('base.group_user') and access_token:
-                    if sale_order_line.order_id.access_token != access_token:
+                if not request.env.user.has_group('base.group_user') and token_string:
+                    if sale_order_line.order_id.access_token != token_string:
                          return {'status': 'error', 'message': 'Invalid access token'}
             else:
                 order_sudo = request.cart or request.website._create_cart()
