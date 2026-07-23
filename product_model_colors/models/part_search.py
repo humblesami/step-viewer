@@ -31,11 +31,15 @@ class PartsGroup(models.Model):
     product_tmpl_id = fields.Many2one('product.template')
     group_title = fields.Char()
     color_template_id = fields.Many2one('colors.template')
-    part_count = fields.Integer('Number of Parts', default=0, readonly=True)
+    part_count = fields.Integer(compute='_get_parts_count')
     part_ids = fields.One2many('glb.part', 'part_group_id')
     
     # part_search_id = fields.Many2one('part.search')
     # chosen_color = fields.Char()
+
+    def _get_parts_count(self):
+        for item in self:
+            item.part_count = len(item.part_ids)
 
     def name_get(self):
         result = []

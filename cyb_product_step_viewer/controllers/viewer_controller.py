@@ -74,8 +74,10 @@ class ProductStepViewerController(http.Controller):
                 return {'status': 'error', 'message': 'Template not found'}
                 
             groups_data = []
+            gp_count = 0
             for group in product_template.parts_group_ids:
                 colors = []
+                gp_count += group.part_count
                 if group.color_template_id:
                     color_vals = request.env['template.colors.values'].sudo().search([('color_template_id', '=', group.color_template_id.id)])
                     for cv in color_vals:
@@ -84,18 +86,18 @@ class ProductStepViewerController(http.Controller):
                             'color_image': f'/web/image/template.colors.values/{cv.id}/color_image' if  cv.color_image else '',
                             'color_value': cv.color_value
                         })
-                        
-                search_term = group.part_search_id.search_term
-                
+
                 groups_data.append({
                     'id': f"group_{group.id}",
                     'displayName': group.group_title or f"Group {group.id}",
-                    'searchTerm': search_term,
+                    'parts_count': group.part_count,
                     'colors': colors
                 })
                 
             return {
                 'status': 'success',
+                'total_parts': len(product_template.step_file_id.glb_part_ids),
+                'total_grouped_parts': gp_count,
                 'productName': product_template.name,
                 'groups': groups_data
             }

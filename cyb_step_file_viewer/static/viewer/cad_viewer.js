@@ -88,6 +88,7 @@ async function loadModelAndInitialize() {
 
     // Fetch Configuration from Odoo
     odooPayload = await fetchConfiguration(product_tmpl_id);
+    console.log(odooPayload);
 
     // Fallback Mock Payload if not connected to backend yet
     if (!odooPayload) {
@@ -169,6 +170,33 @@ async function loadModelAndInitialize() {
         // Dynamically scale far plane so huge models don't clip at the back
         camera.far = dist * 10;
         camera.updateProjectionMatrix();
+
+        // Dynamically add the "Others" group if there are unmatched meshes
+        if (activeGroups["group_others"] && activeGroups["group_others"].length > 0) {
+            const hasOthers = odooPayload.groups.some(g => g.id === "group_others");
+            if (!hasOthers) {
+                const fallbackColors = [
+                    { color_name: 'White', color_value: '#ffffff' },
+                    { color_name: 'Black', color_value: '#000000' },
+                    { color_name: 'Golden', color_value: '#ffd700' },
+                    { color_name: 'Wood', color_value: '#8b5a2b' },
+                    { color_name: 'Red', color_value: '#ff0000' },
+                    { color_name: 'Green', color_value: '#008000' },
+                    { color_name: 'Blue', color_value: '#0000ff' },
+                    { color_name: 'Grey', color_value: '#808080' },
+                    { color_name: 'Silver', color_value: '#c0c0c0' },
+                    { color_name: 'Orange', color_value: '#ffa500' },
+                    { color_name: 'Purple', color_value: '#800080' }
+                ];
+                
+                odooPayload.groups.push({
+                    id: "group_others",
+                    displayName: `Others (${activeGroups["group_others"].length} parts)`,
+                    searchTerm: "",
+                    colors: fallbackColors
+                });
+            }
+        }
 
         buildUI();
 

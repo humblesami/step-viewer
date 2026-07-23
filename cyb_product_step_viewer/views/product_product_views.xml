@@ -38,16 +38,17 @@
                             <field name="step_file_content" widget="binary" filename="step_file_name" nolabel="1"/>
                             <field name="step_file_id" widget="many2one_3d_viewer" nolabel="1" invisible="not step_file_id"/>                            
                         </div>
-
                     </group>
 
-                    <h3>Glb Parts</h3>
-                    <field name="model_part_ids">
-                        <list rownumbers="1">
-                            <field name="part_number"/>
-                            <field name="part_name"/>
-                        </list>
-                    </field>
+                    <div class="o_hidden">
+                        <h3>Glb Parts</h3>
+                        <field name="model_part_ids">
+                            <list rownumbers="1">
+                                <field name="part_number"/>
+                                <field name="part_name"/>
+                            </list>
+                        </field>
+                    </div>
 
                     <div class="glb_groups">
                         <h3 class="o_horizontal_separator mt-4">Part Groups &amp; Customization</h3>
