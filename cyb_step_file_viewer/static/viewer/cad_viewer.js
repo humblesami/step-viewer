@@ -587,6 +587,46 @@ export class CadViewer {
         return all_parts;
     }
 
+    getStructuralGroups() {
+        if (!this.options.odooPayload || !this.options.odooPayload.groups) {
+            return [];
+        }
+
+        const groups = this.options.odooPayload.groups;
+        const result = [];
+        const matchedPartIds = new Set();
+
+        groups.forEach(group => {
+            const groupParts = [];
+            if (group.search_terms) {
+                const terms = group.search_terms.toLowerCase().split(',').map(t => t.trim()).filter(t => t);
+                this.state.parts.forEach(part => {
+                    const name = part.name ? part.name.toLowerCase() : '';
+                    if (terms.some(term => name.includes(term))) {
+                        groupParts.push(part);
+                        matchedPartIds.add(part.id);
+                    }
+                });
+            }
+            result.push({
+                ...group,
+                parts: groupParts,
+                isOthers: false
+            });
+        });
+
+        const otherParts = this.state.parts.filter(p => !matchedPartIds.has(p.id));
+        if (otherParts.length > 0) {
+            result.push({
+                name: `Others (${otherParts.length} parts)`,
+                parts: otherParts,
+                isOthers: true
+            });
+        }
+
+        return result;
+    }
+
     getDescendantIds(partId) {
         const descendants = [];
         const part = this.state.parts.find(p => p.id === partId);
@@ -1153,27 +1193,6 @@ export class CadViewer {
                 
                 <div class="o_stp_bottom_toolbar">
                     <div class="btn-group">
-                        <button class="btn btn-dark tool-btn tool-btn-sidebar" title="Assembly Tree">
-                            <i class="fa fa-sitemap"></i>
-                        </button>
-                        <button class="btn tool-btn tool-btn-lights" title="Lighting Control">
-                            <i class="fa fa-lightbulb-o"></i>
-                        </button>
-                        <button class="btn tool-btn tool-btn-edge" title="Wireframe / Edges">
-                            <i class="fa fa-cube"></i>
-                        </button>
-                        <button class="btn btn-dark tool-btn tool-btn-edge-settings" title="Edge Settings">
-                            <i class="fa fa-pencil"></i>
-                        </button>
-                        <div class="color-picker-wrapper btn btn-dark tool-btn" title="Background Color">
-                            <i class="fa fa-tint" style="font-size: 14px; margin-right: 4px;"></i>
-                            <input type="color" class="global-color-picker">
-                        </div>
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div class="btn-group">
                         <button class="btn btn-dark tool-btn tool-btn-zoom-in" title="Zoom In">
                             <i class="fa fa-search-plus"></i>
                         </button>
@@ -1202,11 +1221,6 @@ export class CadViewer {
         `;
 
         // Bind toolbar events
-        this.container.querySelector('.tool-btn-sidebar').onclick = () => this.toggleSidebar();
-        this.container.querySelector('.tool-btn-lights').onclick = () => this.toggleLightsPopup();
-        this.container.querySelector('.tool-btn-edge').onclick = () => this.toggleEdges();
-        this.container.querySelector('.tool-btn-edge-settings').onclick = () => this.toggleEdgePopup();
-        this.container.querySelector('.global-color-picker').oninput = (e) => this.updateSetting('bgColor', e.target.value);
         this.container.querySelector('.tool-btn-zoom-in').onclick = () => this.zoomIn();
         this.container.querySelector('.tool-btn-zoom-out').onclick = () => this.zoomOut();
         this.container.querySelector('.tool-btn-refresh').onclick = () => this.resetView();
@@ -1265,229 +1279,98 @@ export class CadViewer {
 
         if (lightsBtn) lightsBtn.className = `btn tool-btn tool-btn-lights ${this.state.showLightsPopup ? 'btn-primary' : 'btn-dark'}`;
 
-        // Popovers
         let popoversHtml = '';
-        if (this.state.showSidebar) {
-            const matchedParts = this.getMatchedParts();
-            const matchedIds = new Set(matchedParts.map(p => p.id));
-            const query = this.state.searchQuery === undefined || this.state.searchQuery === null ? 'others' : this.state.searchQuery;
-            const matchingCount = matchedParts.length;
-
-            const noun = matchingCount < this.state.parts.length ? `${matchingCount} Shown Parts` : 'All Shown Parts';
+        if (this.options.odooPayload && this.options.odooPayload.groups) {
+            const groups = this.getStructuralGroups();
             popoversHtml += `
-                <div class="popover o_stp_parts_popup">
-                    <div class="sidebar-header">
-                        <h3>${this.state.assemblyName}</h3>
-                        <button class="btn-close-sidebar"><i class="fa fa-times"></i></button>
+                <div class="popover o_stp_parts_popup" style="width: 25vw; display: block; position: absolute; left: 10px; top: 10px; z-index: 1000; background: rgba(30,30,30,0.95); padding: 15px; border-radius: 8px; color: white;">
+                    <div class="sidebar-header" style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px;">
+                        <h3 style="margin: 0; font-size: 16px; font-family: Inter, sans-serif;">Product Parts</h3>
                     </div>
-                    <div class="sidebar-action-box">
-                        <div class="search-filters-bar">
-                            <div class="part-search-box">
-                                <div class="part-search-input-container">
-                                    <i class="fa fa-search" style="opacity: 0.6; margin-right: 8px; color: #fff;"></i>
-                                    <input type="text" class="form-control part-search-input" placeholder="Search parts..." value="${query}" style="background: transparent; border: none; color: white; outline: none; font-size: 13px; width: 100%; padding: 0; padding-right: 10px; box-shadow: none;">
-                                </div>                            
+                    <div class="sidebar-content" style="max-height: calc(100vh - 100px); overflow-y: auto;">
+                        ${groups.map((group, groupIdx) => `
+                            <div class="group-item" style="margin-bottom: 15px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 4px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <strong style="font-family: Inter, sans-serif; font-size: 14px;">${group.name}</strong>
+                                    <div class="group-actions" style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="color" class="group-color-picker mini-color-picker" data-group-index="${groupIdx}" title="Group Color" value="#ffffff" style="width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;">
+                                        <button class="btn-vis-group" data-group-index="${groupIdx}" style="background: none; border: none; color: white; cursor: pointer;">
+                                            <i class="fa fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="group-parts-list" style="padding-left: 10px; border-left: 2px solid #555; margin-left: 5px;">
+                                    ${group.parts.map(p => `
+                                        <div style="font-size: 12px; color: #ccc; margin-bottom: 4px; display: flex; justify-content: space-between; font-family: Inter, sans-serif;">
+                                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;" title="${p.name}">${p.name}</span>
+                                            <span>
+                                                <input type="color" class="part-color-picker mini-color-picker" data-part-id="${p.id}" value="${p.color}" style="width: 15px; height: 15px; padding: 0; border: none; cursor: pointer; vertical-align: middle;">
+                                                <i class="fa ${p.visible ? 'fa-eye' : 'fa-eye-slash'} btn-vis part-vis" data-part-id="${p.id}" style="cursor: pointer; margin-left: 4px; vertical-align: middle; width: 14px; text-align: center;"></i>
+                                            </span>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
-                            <div class="int_ext_met">
-                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('int') ? 'selected' : ''}" data-term="int">Internal</button>
-                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('ext') ? 'selected' : ''}" data-term="ext">External</button>
-                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('met') ? 'selected' : ''}" data-term="met">MetalParts</button>
-                                <button class="btn btn-sm btn-primary btn_filter ${query.includes('others') ? 'selected' : ''}" data-term="others">Others</button>
-                            </div>
-                            <div class="matching-parts-count">
-                                <span id="matching_count">${matchingCount}</span> of <span id="total_parts">${this.state.parts.length}</span> parts matched
-                            </div>
-                        </div>
-                        <div class="part-item-modern global-paint-row">
-                            <div class="part-actions" style="margin-right: 5px; position: relative;">
-                                ${this.options.productColors && this.options.productColors.length > 0 ?
-                                `<div class="color-palette-btn" title="Choose Template Color"></div>
-                                 <div class="color-palette-popover" style="display: none;">
-                                     <div class="color-grid">
-                                         ${this.options.productColors.map(c => `<div class="color-swatch" data-color="${c}" style="background-color: ${c};" title="${c}"></div>`).join('')}
-                                     </div>
-                                 </div>` : 
-                                `<input type="color" class="mini-color-picker global-paint-picker" value="#ffffff">`
-                                }
-                            </div>
-                            <span class="part-name-text">Paint ${noun}</span>
-                        </div>
-                    </div>
-                    <div class="sidebar-content">
-                        ${this.state.parts.map(part => {
-                const matches = matchedIds.has(part.id);
-                let isCollapsedByParent = false;
-                let currParent = this.state.parts.find(p => p.id === part.parentId);
-                while (currParent) {
-                    if (!currParent.expanded) {
-                        isCollapsedByParent = true;
-                        break;
-                    }
-                    currParent = this.state.parts.find(p => p.id === currParent.parentId);
-                }
-
-                const displayStyle = (matches && !isCollapsedByParent) ? '' : 'display: none;';
-                const expanderHtml = part.isAssembly
-                    ? `<i class="fa ${part.expanded ? 'fa-caret-down' : 'fa-caret-right'} tree-expander" data-part-id="${part.id}" style="cursor: pointer; text-align: center; margin: 0 4px; color: aliceblue; font-size: 20px; padding: 5px;"></i>`
-                    : `<span style="width: 5px; display: inline-block;"></span>`;
-
-                const nameStyle = part.isAssembly ? 'font-weight: 600;' : '';
-
-                let utf8Name = part.name;
-                try {
-                    // OCP/GLTF sometimes parses non-English characters as raw bytes (Latin-1).
-                    // This securely decodes those bytes back into proper UTF-8 strings.
-                    utf8Name = decodeURIComponent(escape(part.name));
-                } catch (e) {
-                    // Use original if decoding fails
-                }
-
-                return `
-                    <div class="part-item-modern" data-part-id="${part.id}" style="${displayStyle} padding-left: ${part.level * 16 + 8}px;">
-                        <div class="part-actions">
-                            <input type="color" value="${part.color}" data-part-id="${part.id}" class="mini-color-picker part-color-picker">
-                            <button class="btn-vis ${part.visible ? 'active' : ''}" data-part-id="${part.id}">
-                                <i class="fa ${part.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
-                            </button>
-                        </div>    
-                        ${expanderHtml}
-                        <span class="part-name-text" style="${nameStyle}" title="Volume: ${Math.round(part.volume)}">${utf8Name}</span>
-                    </div>
-                `;
-            }).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        if (this.state.showLightsPopup) {
-            popoversHtml += `
-                <div class="popover o_stp_lights_popup">
-                    <div class="popup-header">
-                        <span>Lighting</span>
-                        <button class="btn-close-mini close-lights-btn"><i class="fa fa-times"></i></button>
-                    </div>
-                    <div class="popup-section">
-                        <label>Ambient Intensity</label>
-                        <input type="range" min="0" max="2" step="0.1" value="${this.settings.lighting.ambientIntensity}" class="ambient-range">
-                    </div>
-                    <div class="popup-section">
-                        <label>Main Light</label>
-                        <input type="range" min="0" max="5" step="0.1" value="${this.settings.lighting.mainIntensity}" class="main-range">
-                    </div>
-                    <div class="popup-section">
-                        <label>Exposure</label>
-                        <input type="range" min="0" max="4" step="0.1" value="${this.settings.lighting.exposure}" class="exposure-range">
-                    </div>
-                </div>
-            `;
-        }
-
-        if (this.state.showEdgePopup) {
-            popoversHtml += `
-                <div class="popover o_stp_edge_popup">
-                    <div class="popup-header">
-                        <span>Edges</span>
-                        <button class="btn-close-mini close-edge-btn"><i class="fa fa-times"></i></button>
-                    </div>
-                    <div class="popup-section">
-                        <label>Color</label>
-                        <input type="color" value="${this.settings.edgeColor}" class="edge-color-picker mini-color-picker w-100">
-                    </div>
-                    <div class="popup-section">
-                        <label>Opacity</label>
-                        <input type="range" min="0" max="1" step="0.05" value="${this.settings.edgeOpacity}" class="edge-opacity-range">
+                        `).join('')}
                     </div>
                 </div>
             `;
         }
 
         popoversContainer.innerHTML = popoversHtml;
-        if (popoversHtml) {
-            this.init_group_search();
-        }
 
         // Bind popover events
-        if (this.state.showSidebar) {
-            popoversContainer.querySelector('.btn-close-sidebar').onclick = () => this.toggleSidebar();
-
-            const nativeGlobalPicker = popoversContainer.querySelector('.global-paint-picker');
-            if (nativeGlobalPicker) {
-                nativeGlobalPicker.oninput = (e) => this.onGlobalColorChange(e);
-            }
-
-            const paletteBtn = popoversContainer.querySelector('.color-palette-btn');
-            const palettePopover = popoversContainer.querySelector('.color-palette-popover');
-            if (paletteBtn && palettePopover) {
-                paletteBtn.onclick = (e) => {
-                    const isHidden = palettePopover.style.display === 'none';
-                    palettePopover.style.display = isHidden ? 'block' : 'none';
+        if (this.options.odooPayload && this.options.odooPayload.groups) {
+            const groups = this.getStructuralGroups();
+            
+            // Group level bindings
+            popoversContainer.querySelectorAll('.group-color-picker').forEach(picker => {
+                picker.oninput = (e) => {
+                    const groupIdx = parseInt(e.target.dataset.groupIndex, 10);
+                    const group = groups[groupIdx];
+                    group.parts.forEach(p => {
+                        p.color = e.target.value;
+                        const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
+                        if (partObj) {
+                            partObj.traverse(child => {
+                                if (child.isMesh && child.material) {
+                                    const mat = child.material.clone();
+                                    mat.color.set(p.color);
+                                    mat.needsUpdate = true;
+                                    child.material = mat;
+                                }
+                            });
+                        }
+                    });
+                    this.rebuildMergedModel();
+                    this.updateUI(); // Refresh part colors in UI
                 };
-                popoversContainer.querySelectorAll('.color-swatch').forEach(swatch => {
-                    swatch.onclick = (e) => {
-                        const hex = e.currentTarget.dataset.color;
-                        this.onGlobalColorChange({ target: { value: hex } });
-                        palettePopover.style.display = 'none';
-                    };
-                });
-            }
+            });
 
-            const searchInput = popoversContainer.querySelector('.part-search-input');
-            if (searchInput) {
-                const searchWrapper = searchInput.closest('div');
-                searchInput.onfocus = () => {
-                    if (searchWrapper) {
-                        searchWrapper.style.borderColor = '#00a09d';
-                        searchWrapper.style.boxShadow = '0 0 5px rgba(0, 160, 157, 0.5)';
-                    }
+            popoversContainer.querySelectorAll('.btn-vis-group').forEach(btn => {
+                btn.onclick = (e) => {
+                    const groupIdx = parseInt(e.currentTarget.dataset.groupIndex, 10);
+                    const group = groups[groupIdx];
+                    const anyVisible = group.parts.some(p => p.visible);
+                    const newVis = !anyVisible;
+                    
+                    group.parts.forEach(p => {
+                        p.visible = newVis;
+                        const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
+                        if (partObj) partObj.visible = newVis;
+                    });
+                    this.rebuildMergedModel();
+                    this.updateUI();
                 };
-                searchInput.onblur = () => {
-                    if (searchWrapper) {
-                        searchWrapper.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                        searchWrapper.style.boxShadow = 'none';
-                    }
-                };
-                const handleSearch = (e) => {
-                    this.providePartsSearch(e.target.value, null);
-                };
-                // searchInput.oninput = handleSearch;
-                searchInput.onkeyup = function (e) {
-                    if (e.keyCode === 13) {
-                        handleSearch(e);
-                    }
-                }
-            }
+            });
 
-            const clearBtn = popoversContainer.querySelector('.clear-search-btn');
-            if (clearBtn) {
-                clearBtn.onclick = () => {
-                    if (searchInput) {
-                        searchInput.value = '';
-                        this.providePartsSearch('');
-                    }
-                };
-            }
-
+            // Part level bindings
             popoversContainer.querySelectorAll('.part-color-picker').forEach(el => {
                 el.oninput = (e) => this.onColorChange(e, e.target.dataset.partId);
-                el.onkeydown = (e) => {
-                    if (e.key === 'Enter') this.onColorChange(e, e.target.dataset.partId, true);
-                };
             });
-            popoversContainer.querySelectorAll('.btn-vis').forEach(el => {
+            
+            popoversContainer.querySelectorAll('.part-vis').forEach(el => {
                 el.onclick = (e) => this.toggleVisibility(e, e.currentTarget.dataset.partId);
-            });
-
-            popoversContainer.querySelectorAll('.tree-expander').forEach(exp => {
-                exp.onclick = (e) => {
-                    const partId = e.currentTarget.dataset.partId;
-                    const part = this.state.parts.find(p => p.id === partId);
-                    if (part) {
-                        part.expanded = !part.expanded;
-                        e.currentTarget.className = `fa ${part.expanded ? 'fa-caret-down' : 'fa-caret-right'} tree-expander`;
-                        this.providePartsSearch(null, null); // Refresh DOM visibility instantly
-                    }
-                };
             });
 
             // Restore scroll position
@@ -1495,50 +1378,6 @@ export class CadViewer {
             if (newSidebarContent) {
                 newSidebarContent.scrollTop = sidebarScrollTop;
             }
-
-            // Resizing Observer
-            if (this.partsPopupObserver) {
-                this.partsPopupObserver.disconnect();
-            }
-
-            const stp_parts_popup = popoversContainer.querySelector('.popover.o_stp_parts_popup');
-            if (stp_parts_popup) {
-                // Apply saved width or fallback to 25vw
-                const savedWidth = localStorage.getItem('left_popup_width');
-                if (savedWidth && savedWidth !== '0px') {
-                    stp_parts_popup.style.width = savedWidth.endsWith('px') || savedWidth.endsWith('vw') ? savedWidth : savedWidth + 'px';
-                } else {
-                    stp_parts_popup.style.width = '25vw';
-                }
-
-                this.partsPopupObserver = new ResizeObserver((entries) => {
-                    for (let entry of entries) {
-                        const width_val = Math.round(entry.target.getBoundingClientRect().width);
-                        if (width_val >= 100) {
-                            localStorage.setItem('left_popup_width', width_val + 'px');
-                        }
-                    }
-                });
-                this.partsPopupObserver.observe(stp_parts_popup);
-            }
-        }
-
-        if (this.state.showLightsPopup) {
-            popoversContainer.querySelector('.close-lights-btn').onclick = () => {
-                this.state.showLightsPopup = false;
-                this.updateUI();
-            };
-            popoversContainer.querySelector('.ambient-range').oninput = (e) => this.updateSetting('ambientIntensity', e.target.value);
-            popoversContainer.querySelector('.main-range').oninput = (e) => this.updateSetting('mainIntensity', e.target.value);
-            popoversContainer.querySelector('.exposure-range').oninput = (e) => this.updateSetting('exposure', e.target.value);
-        }
-        if (this.state.showEdgePopup) {
-            popoversContainer.querySelector('.close-edge-btn').onclick = () => {
-                this.state.showEdgePopup = false;
-                this.updateUI();
-            };
-            popoversContainer.querySelector('.edge-color-picker').oninput = (e) => this.updateSetting('edgeColor', e.target.value);
-            popoversContainer.querySelector('.edge-opacity-range').oninput = (e) => this.updateSetting('edgeOpacity', e.target.value);
         }
 
         // Loader
@@ -1587,130 +1426,160 @@ export class CadViewer {
     }
 }
 
-(function () {
-    document.addEventListener('DOMContentLoaded', async () => {
-        const root = document.getElementById('cad-viewer-root');
-        let attachment_id = findQueryParam('file_id');
-        let filename = findQueryParam('filename');
-        let file_url = document.getElementById('step_viewer_file_url').value;
-        if (attachment_id) {
-            file_url = window.location.origin + `/web/content/${attachment_id}`;
-            if (filename) {
-                file_url += `/` + filename;
-            }
-            // Add a cache-buster so the browser doesn't load the old HTTP cache
-            file_url += `?t=${new Date().getTime()}`;
+async function initApp() {
+    const root = document.getElementById('cad-viewer-root');
+    if (!root) return;
+    
+    let attachment_id = findQueryParam('file_id');
+    let filename = findQueryParam('filename');
+    let file_url = document.getElementById('step_viewer_file_url') ? document.getElementById('step_viewer_file_url').value : '';
+    
+    if (attachment_id) {
+        file_url = window.location.origin + `/web/content/${attachment_id}`;
+        if (filename) {
+            file_url += `/` + filename;
         }
+        // Add a cache-buster so the browser doesn't load the old HTTP cache
+        file_url += `?t=${new Date().getTime()}`;
+    }
 
-        let product_id = findQueryParam('product_id');
-        let line_id = findQueryParam('line_id');
-        let access_token = findQueryParam('access_token');
-        let hide_save = findQueryParam('hide_save');
+    let product_id = findQueryParam('product_id');
+    let product_tmpl_id = findQueryParam('product_tmpl_id');
+    let line_id = findQueryParam('line_id');
+    let access_token = findQueryParam('access_token');
+    let hide_save = findQueryParam('hide_save');
 
-        let customizationData = null;
-        let productColorsData = null;
-        if (line_id || product_id) {
-            try {
-                let url = '/step_file_viewer/get_customization';
-                let req_body = {};
-                if (line_id) req_body.line_id = line_id;
-                if (product_id) req_body.product_id = product_id;
-                if (access_token) req_body.access_token = access_token;
+    let customizationData = null;
+    let productColorsData = null;
+    if (line_id || product_id) {
+        try {
+            let url = '/step_file_viewer/get_customization';
+            let req_body = {};
+            if (line_id) req_body.line_id = line_id;
+            if (product_id) req_body.product_id = product_id;
+            if (access_token) req_body.access_token = access_token;
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ params: req_body })
-                });
-                if (response.ok) {
-                    const responseJSON = await response.json();
-                    if (responseJSON.result && responseJSON.result.status === 'success') {
-                        if (responseJSON.result.customization_json) {
-                            customizationData = JSON.parse(responseJSON.result.customization_json);
-                        }
-                        if (responseJSON.result.product_colors) {
-                            productColorsData = responseJSON.result.product_colors;
-                        }
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ params: req_body })
+            });
+            if (response.ok) {
+                const responseJSON = await response.json();
+                if (responseJSON.result && responseJSON.result.status === 'success') {
+                    if (responseJSON.result.customization_json) {
+                        customizationData = JSON.parse(responseJSON.result.customization_json);
+                    }
+                    if (responseJSON.result.product_colors) {
+                        productColorsData = responseJSON.result.product_colors;
                     }
                 }
-            } catch (e) { console.error('Error fetching customization', e); }
-        }
-
-        const viewer = new CadViewer(root, file_url, {
-            onClose: () => {
-                window.parent.postMessage('close_step_viewer', '*');
-            },
-            customization: customizationData,
-            productColors: productColorsData
-        });
-
-        if ((!product_id && !line_id) || hide_save) {
-            return;
-        }
-
-        async function saveToOdoo(customizationJSON, dt1) {
-            try {
-                let url = '/step_file_viewer/save_sale_model';
-
-                let bodyData = { customization_json: customizationJSON };
-                if (product_id) bodyData.product_id = product_id;
-                if (line_id) bodyData.line_id = line_id;
-                if (access_token) bodyData.access_token = access_token;
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify({ params: bodyData })
-                });
-                if (response.ok) {
-                    const responseJSON = await response.json();
-                    let dt3 = Date.now();
-                    console.log(666, `Finished saving model to Odoo in ${dt3 - dt1}ms`);
-
-                    if (responseJSON.error) {
-                        alert("Error from server => " + responseJSON.error.message);
-                        return;
-                    }
-                    const responseData = responseJSON.result;
-                    if (responseData && responseData.status === 'success') {
-                        window.parent.location.reload();
-                    } else {
-                        alert('Error ' + (responseData ? responseData.status : '') + ' - ' + (responseData ? responseData.message : 'Unknown error'));
-                    }
-                } else {
-                    alert('HTTP Response Status ' + response.status + ' - ' + response.statusText);
-                }
-            } catch (error) {
-                alert('Error saving model: ' + error);
             }
-        }
-        function addToCartSaveModelBtn() {
-            const saveFinishedModelBtn = document.createElement('button');
-            saveFinishedModelBtn.className = 'btn btn-dark tool-btn tool-btn-save-finished';
-            saveFinishedModelBtn.title = 'Save Finished 3D Model';
-            saveFinishedModelBtn.innerHTML = '<i class="fa fa-save"></i>';
-            document.querySelector('.o_stp_bottom_toolbar .tool-btn-download').after(saveFinishedModelBtn);
+        } catch (e) { console.error('Error fetching customization', e); }
+    }
 
-            saveFinishedModelBtn.onclick = () => {
-                viewer.setProcessing(true, 'Saving Customizations...');
-                setTimeout(() => {
-                    let dt1 = Date.now();
-                    const modifications = viewer.state.parts.map(p => ({
-                        id: p.id,
-                        name: p.name,
-                        color: p.color,
-                        visible: p.visible
-                    }));
-                    const customizationJSON = JSON.stringify({ parts: modifications });
-                    saveToOdoo(customizationJSON, dt1).finally(() => {
-                        viewer.setProcessing(false);
-                    });
-                }, 50);
-            };
+    let odooPayload = null;
+    if (product_tmpl_id) {
+        try {
+            const configResponse = await fetch('/step_file_viewer/get_cad_viewer_config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: "2.0",
+                    method: "call",
+                    params: { product_tmpl_id: product_tmpl_id }
+                })
+            });
+            const result = await configResponse.json();
+            if (result.result && result.result.status === 'success') {
+                odooPayload = result.result;
+            }
+        } catch (e) {
+            console.error("Failed to fetch config", e);
         }
-        addToCartSaveModelBtn();
+    }
+
+    const viewer = new CadViewer(root, file_url, {
+        onClose: () => {
+            window.parent.postMessage('close_step_viewer', '*');
+        },
+        customization: customizationData,
+        productColors: productColorsData,
+        odooPayload: odooPayload
     });
-})();
+
+    if ((!product_id && !line_id) || hide_save) {
+        return;
+    }
+
+    async function saveToOdoo(customizationJSON, dt1) {
+        try {
+            let url = '/step_file_viewer/save_sale_model';
+
+            let bodyData = { customization_json: customizationJSON };
+            if (product_id) bodyData.product_id = product_id;
+            if (line_id) bodyData.line_id = line_id;
+            if (access_token) bodyData.access_token = access_token;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ params: bodyData })
+            });
+            if (response.ok) {
+                const responseJSON = await response.json();
+                let dt3 = Date.now();
+                console.log(666, `Finished saving model to Odoo in ${dt3 - dt1}ms`);
+
+                if (responseJSON.error) {
+                    alert("Error from server => " + responseJSON.error.message);
+                    return;
+                }
+                const responseData = responseJSON.result;
+                if (responseData && responseData.status === 'success') {
+                    window.parent.location.reload();
+                } else {
+                    alert('Error ' + (responseData ? responseData.status : '') + ' - ' + (responseData ? responseData.message : 'Unknown error'));
+                }
+            } else {
+                alert('HTTP Response Status ' + response.status + ' - ' + response.statusText);
+            }
+        } catch (error) {
+            alert('Error saving model: ' + error);
+        }
+    }
+    function addToCartSaveModelBtn() {
+        const saveFinishedModelBtn = document.createElement('button');
+        saveFinishedModelBtn.className = 'btn btn-dark tool-btn tool-btn-save-finished';
+        saveFinishedModelBtn.title = 'Save Finished 3D Model';
+        saveFinishedModelBtn.innerHTML = '<i class="fa fa-save"></i>';
+        document.querySelector('.o_stp_bottom_toolbar .tool-btn-download').after(saveFinishedModelBtn);
+
+        saveFinishedModelBtn.onclick = () => {
+            viewer.setProcessing(true, 'Saving Customizations...');
+            setTimeout(() => {
+                let dt1 = Date.now();
+                const modifications = viewer.state.parts.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    color: p.color,
+                    visible: p.visible
+                }));
+                const customizationJSON = JSON.stringify({ parts: modifications });
+                saveToOdoo(customizationJSON, dt1).finally(() => {
+                    viewer.setProcessing(false);
+                });
+            }, 50);
+        };
+    }
+    addToCartSaveModelBtn();
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
