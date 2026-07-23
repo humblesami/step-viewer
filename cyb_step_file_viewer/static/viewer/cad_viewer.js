@@ -653,7 +653,7 @@ export class CadViewer {
         
         const groupsList = this.getStructuralGroups();
         
-        let savedWidth = localStorage.getItem('left_popup_width') || '10vw';
+        let savedWidth = localStorage.getItem('left_popup_width') || '300px';
         
         const collapseClass = this.state.isSidebarCollapsed ? 'sidebar-collapsed' : '';
         const popupWidth = this.state.isSidebarCollapsed ? '50px' : savedWidth;
@@ -737,6 +737,11 @@ export class CadViewer {
             collapseBtn.onclick = () => {
                 this.state.isSidebarCollapsed = !this.state.isSidebarCollapsed;
                 this.updateUI();
+                setTimeout(() => {
+                    if (this._handlers && this._handlers.onWindowResize) {
+                        this._handlers.onWindowResize();
+                    }
+                }, 10);
             };
         }
 
@@ -752,6 +757,9 @@ export class CadViewer {
                 if (pxWidth > 60) {
                     localStorage.setItem('left_popup_width', pxWidth + 'px');
                 }
+            }
+            if (this._handlers && this._handlers.onWindowResize) {
+                this._handlers.onWindowResize();
             }
         };
         document.addEventListener('mouseup', this._saveWidthHandler);
@@ -1436,10 +1444,10 @@ export class CadViewer {
     renderUI() {
         // Initial static structure
         this.container.innerHTML = `
-            <div class="o_stp_preview_container">
-                <div id="three-container" style="width: 100%; height: 100%; cursor: grab;"></div>
-                <div id="popovers-container"></div>
-                <div id="loader-container"></div>
+            <div class="o_stp_preview_container" style="display: flex; flex-direction: row; width: 100vw; height: 100vh; overflow: hidden;">
+                <div id="popovers-container" style="flex-shrink: 0; position: relative; height: 100%;"></div>
+                <div id="three-container" style="flex-grow: 1; height: 100%; cursor: grab; position: relative; overflow: hidden;"></div>
+                <div id="loader-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;"></div>
             </div>
         `;
 
