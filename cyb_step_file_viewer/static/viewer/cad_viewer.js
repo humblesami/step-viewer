@@ -595,26 +595,23 @@ export class CadViewer {
         
         let groupsDict = {'Others': []}
         const groups = this.options.odooPayload.groups;
-        console.log(1111, groups, this.state.parts);
 
         this.state.parts.forEach(part => {
-            if (part.isAssembly) {
-                let unmatched = true;
-                groups.forEach(group => {
-                    group.parts.forEach(part => {
-                        if(part.name == part.part_name) {
-                            if(groupsDict[group.displayName]) {
-                                groupsDict[group.displayName].push(part);
-                            } else {
-                                groupsDict[group.displayName] = [part]
-                            }
-                            unmatched = false;
+            let unmatched = true;
+            groups.forEach(group => {
+                group.parts.forEach(gp => {
+                    if (part.name === gp.part_name) {
+                        if (groupsDict[group.displayName]) {
+                            groupsDict[group.displayName].push(part);
+                        } else {
+                            groupsDict[group.displayName] = [part];
                         }
-                    })
+                        unmatched = false;
+                    }
                 });
-                if(unmatched) {
-                    groupsDict['Others'].push(part);
-                }   
+            });
+            if (unmatched) {
+                groupsDict['Others'].push(part);
             }
         });
 
@@ -628,15 +625,14 @@ export class CadViewer {
             })
         }
 
-        console.log(7888, results);
+        console.log(3333, groupsDict);
         return results;
     }
 
     renderGroupsSidebar() {
-        console.log(77777, this.options.odooPayload);
         if (!this.options.odooPayload || !this.options.odooPayload.groups) return '';
         
-        const groups = this.getStructuralGroups();
+        const groupsList = this.getStructuralGroups();
         
         let savedWidth = localStorage.getItem('left_popup_width') || '10vw';
         
@@ -682,11 +678,11 @@ export class CadViewer {
                 
                 <!-- Group List Area -->
                 <div class="sidebar-content" style="display: ${displayGroups}; max-height: calc(100vh - 100px); overflow-y: auto;">
-                    ${groups.map((group, groupIdx) => `
+                    ${groupsList.map((group, groupIdx) => `
                         <div class="group-item">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <strong class="group-name">
-                                    ${group.isOthers ? "Others" : `${group.displayName} (${group.parts.length} parts)`}
+                                    ${group.displayName} (${group.parts.length} parts)
                                 </strong>
                                 <div class="group-actions" style="display: flex; align-items: center; gap: 8px;">
                                     <input type="color" class="group-color-picker mini-color-picker" data-group-index="${groupIdx}" title="Group Color" value="#ffffff" style="width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;">
