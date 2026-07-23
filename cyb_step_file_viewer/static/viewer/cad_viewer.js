@@ -627,6 +627,89 @@ export class CadViewer {
         return result;
     }
 
+    renderGroupsSidebar() {
+        if (!this.options.odooPayload || !this.options.odooPayload.groups) return '';
+        
+        const groups = this.getStructuralGroups();
+        return `
+            <div class="popover o_stp_parts_popup" style="width: 25vw; display: block; position: absolute; left: 10px; top: 10px; z-index: 1000; background: rgba(30,30,30,0.95); padding: 15px; border-radius: 8px; color: white;">
+                <div class="sidebar-header" style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px;">
+                    <h3 style="margin: 0; font-size: 16px; font-family: Inter, sans-serif;">Product Parts</h3>
+                </div>
+                <div class="sidebar-content" style="max-height: calc(100vh - 100px); overflow-y: auto;">
+                    ${groups.map((group, groupIdx) => `
+                        <div class="group-item" style="margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 4px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <strong style="font-family: Inter, sans-serif; font-size: 14px;">
+                                    ${group.isOthers ? group.name : `${group.name} (${group.parts.length} parts)`}
+                                </strong>
+                                <div class="group-actions" style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="color" class="group-color-picker mini-color-picker" data-group-index="${groupIdx}" title="Group Color" value="#ffffff" style="width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;">
+                                    <button class="btn-vis-group" data-group-index="${groupIdx}" style="background: none; border: none; color: white; cursor: pointer;">
+                                        <i class="fa fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    bindGroupsSidebarEvents(popoversContainer) {
+        if (!this.options.odooPayload || !this.options.odooPayload.groups) return;
+        
+        const groups = this.getStructuralGroups();
+        
+        // Group level color binding
+        popoversContainer.querySelectorAll('.group-color-picker').forEach(picker => {
+            picker.oninput = (e) => {
+                const groupIdx = parseInt(e.target.dataset.groupIndex, 10);
+                const group = groups[groupIdx];
+                group.parts.forEach(p => {
+                    p.color = e.target.value;
+                    const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
+                    if (partObj) {
+                        partObj.traverse(child => {
+                            if (child.isMesh && child.material) {
+                                const mat = child.material.clone();
+                                mat.color.set(p.color);
+                                mat.needsUpdate = true;
+                                child.material = mat;
+                            }
+                        });
+                    }
+                });
+                this.rebuildMergedModel();
+            };
+        });
+
+        // Group level visibility binding
+        popoversContainer.querySelectorAll('.btn-vis-group').forEach(btn => {
+            btn.onclick = (e) => {
+                const groupIdx = parseInt(e.currentTarget.dataset.groupIndex, 10);
+                const group = groups[groupIdx];
+                const anyVisible = group.parts.some(p => p.visible);
+                const newVis = !anyVisible;
+                
+                group.parts.forEach(p => {
+                    p.visible = newVis;
+                    const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
+                    if (partObj) partObj.visible = newVis;
+                });
+                
+                // Toggle icon
+                const icon = e.currentTarget.querySelector('i');
+                if (icon) {
+                    icon.className = newVis ? 'fa fa-eye' : 'fa fa-eye-slash';
+                }
+
+                this.rebuildMergedModel();
+            };
+        });
+    }
+
     getDescendantIds(partId) {
         const descendants = [];
         const part = this.state.parts.find(p => p.id === partId);
@@ -1279,106 +1362,9 @@ export class CadViewer {
 
         if (lightsBtn) lightsBtn.className = `btn tool-btn tool-btn-lights ${this.state.showLightsPopup ? 'btn-primary' : 'btn-dark'}`;
 
-        let popoversHtml = '';
-        if (this.options.odooPayload && this.options.odooPayload.groups) {
-            const groups = this.getStructuralGroups();
-            popoversHtml += `
-                <div class="popover o_stp_parts_popup" style="width: 25vw; display: block; position: absolute; left: 10px; top: 10px; z-index: 1000; background: rgba(30,30,30,0.95); padding: 15px; border-radius: 8px; color: white;">
-                    <div class="sidebar-header" style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px;">
-                        <h3 style="margin: 0; font-size: 16px; font-family: Inter, sans-serif;">Product Parts</h3>
-                    </div>
-                    <div class="sidebar-content" style="max-height: calc(100vh - 100px); overflow-y: auto;">
-                        ${groups.map((group, groupIdx) => `
-                            <div class="group-item" style="margin-bottom: 15px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 4px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                    <strong style="font-family: Inter, sans-serif; font-size: 14px;">${group.name}</strong>
-                                    <div class="group-actions" style="display: flex; align-items: center; gap: 8px;">
-                                        <input type="color" class="group-color-picker mini-color-picker" data-group-index="${groupIdx}" title="Group Color" value="#ffffff" style="width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;">
-                                        <button class="btn-vis-group" data-group-index="${groupIdx}" style="background: none; border: none; color: white; cursor: pointer;">
-                                            <i class="fa fa-eye"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="group-parts-list" style="padding-left: 10px; border-left: 2px solid #555; margin-left: 5px;">
-                                    ${group.parts.map(p => `
-                                        <div style="font-size: 12px; color: #ccc; margin-bottom: 4px; display: flex; justify-content: space-between; font-family: Inter, sans-serif;">
-                                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%;" title="${p.name}">${p.name}</span>
-                                            <span>
-                                                <input type="color" class="part-color-picker mini-color-picker" data-part-id="${p.id}" value="${p.color}" style="width: 15px; height: 15px; padding: 0; border: none; cursor: pointer; vertical-align: middle;">
-                                                <i class="fa ${p.visible ? 'fa-eye' : 'fa-eye-slash'} btn-vis part-vis" data-part-id="${p.id}" style="cursor: pointer; margin-left: 4px; vertical-align: middle; width: 14px; text-align: center;"></i>
-                                            </span>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
+        let popoversHtml = this.renderGroupsSidebar();
         popoversContainer.innerHTML = popoversHtml;
-
-        // Bind popover events
-        if (this.options.odooPayload && this.options.odooPayload.groups) {
-            const groups = this.getStructuralGroups();
-            
-            // Group level bindings
-            popoversContainer.querySelectorAll('.group-color-picker').forEach(picker => {
-                picker.oninput = (e) => {
-                    const groupIdx = parseInt(e.target.dataset.groupIndex, 10);
-                    const group = groups[groupIdx];
-                    group.parts.forEach(p => {
-                        p.color = e.target.value;
-                        const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
-                        if (partObj) {
-                            partObj.traverse(child => {
-                                if (child.isMesh && child.material) {
-                                    const mat = child.material.clone();
-                                    mat.color.set(p.color);
-                                    mat.needsUpdate = true;
-                                    child.material = mat;
-                                }
-                            });
-                        }
-                    });
-                    this.rebuildMergedModel();
-                    this.updateUI(); // Refresh part colors in UI
-                };
-            });
-
-            popoversContainer.querySelectorAll('.btn-vis-group').forEach(btn => {
-                btn.onclick = (e) => {
-                    const groupIdx = parseInt(e.currentTarget.dataset.groupIndex, 10);
-                    const group = groups[groupIdx];
-                    const anyVisible = group.parts.some(p => p.visible);
-                    const newVis = !anyVisible;
-                    
-                    group.parts.forEach(p => {
-                        p.visible = newVis;
-                        const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
-                        if (partObj) partObj.visible = newVis;
-                    });
-                    this.rebuildMergedModel();
-                    this.updateUI();
-                };
-            });
-
-            // Part level bindings
-            popoversContainer.querySelectorAll('.part-color-picker').forEach(el => {
-                el.oninput = (e) => this.onColorChange(e, e.target.dataset.partId);
-            });
-            
-            popoversContainer.querySelectorAll('.part-vis').forEach(el => {
-                el.onclick = (e) => this.toggleVisibility(e, e.currentTarget.dataset.partId);
-            });
-
-            // Restore scroll position
-            const newSidebarContent = popoversContainer.querySelector('.sidebar-content');
-            if (newSidebarContent) {
-                newSidebarContent.scrollTop = sidebarScrollTop;
-            }
-        }
+        this.bindGroupsSidebarEvents(popoversContainer);
 
         // Loader
         if (this.state.loading_model) {
