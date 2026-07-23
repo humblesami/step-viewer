@@ -11,7 +11,6 @@ from .step_to_glb_ocp import convert_step_to_glb_with_names
 _logger = logging.getLogger(__name__)
 
 
-
 class StepService(models.TransientModel):
     _name = 'step.file.service'
     _description = "Step File Service"
@@ -152,7 +151,6 @@ class StepService(models.TransientModel):
                 'file_url': f'/web/content/{att.id}/{att.name}',
             }
         }
-
 
 
 class StpFiles(models.Model):

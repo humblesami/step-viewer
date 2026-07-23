@@ -636,6 +636,10 @@ export class CadViewer {
                 ];
             }
 
+            if (key === 'Others' && groupsDict[key].length === 0) {
+                continue;
+            }
+
             results.push({
                 id: groupConfig ? groupConfig.id : "group_others",
                 displayName: key,
@@ -643,8 +647,16 @@ export class CadViewer {
                 isOthers: key === 'Others',
                 parts: groupsDict[key],
                 colors: colors
-            })
+            });
         }
+        
+        // Move "Others" to the bottom of the array
+        const othersIndex = results.findIndex(g => g.isOthers);
+        if (othersIndex !== -1) {
+            const othersGroup = results.splice(othersIndex, 1)[0];
+            results.push(othersGroup);
+        }
+        
         return results;
     }
 
@@ -701,7 +713,7 @@ export class CadViewer {
                         <div class="group-item">
                             <div class="group-header">
                                 <strong class="group-name">
-                                    ${group.isOthers ? "Others" : `${group.displayName} (${group.parts.length} parts)`}
+                                    ${group.displayName} (${group.parts.length} parts)
                                 </strong>
                                 <div class="group-actions" style="display: flex; align-items: center; gap: 8px;">
                                     <button class="btn-vis-group" data-group-index="${groupIdx}" style="background: none; border: none; color: #333333; cursor: pointer;">
@@ -812,6 +824,27 @@ export class CadViewer {
                 const colorImage = e.currentTarget.dataset.colorImage;
                 const group = groups[groupIdx];
                 
+                if (colorImage) {
+                    let missingUVs = false;
+                    group.parts.forEach(p => {
+                        const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
+                        if (!partObj) return;
+                        partObj.traverse(child => {
+                            if (child.isMesh && child.geometry && !child.geometry.attributes.uv) {
+                                missingUVs = true;
+                            }
+                        });
+                    });
+
+                    if (missingUVs && e.currentTarget.dataset.fallback !== "true") {
+                        alert("Some 3D parts in this group do not support image textures (missing UV maps).\n\nClick this color again to apply the image where possible, and solid hex color elsewhere.");
+                        e.currentTarget.dataset.fallback = "true";
+                        return;
+                    }
+                }
+                
+                e.currentTarget.dataset.fallback = "false";
+                
                 // Update active styling
                 const grid = e.currentTarget.closest('.color-palette-grid');
                 if (grid) {
@@ -823,38 +856,38 @@ export class CadViewer {
                     p.color = colorValue;
                     p.colorImage = colorImage;
                     const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
-                    if (partObj) {
-                        partObj.traverse(child => {
-                            if (child.isMesh && child.material) {
-                                const mat = child.material.clone();
-                                const hasUVs = child.geometry && child.geometry.attributes && child.geometry.attributes.uv;
-                                
-                                if (colorImage && hasUVs) {
-                                    if (!this.textureCache) this.textureCache = new Map();
-                                    let texture = this.textureCache.get(colorImage);
-                                    if (!texture) {
-                                        const textureLoader = new THREEModules.TextureLoader();
-                                        texture = textureLoader.load(colorImage, () => {
-                                            this.rebuildMergedModel();
-                                        });
-                                        texture.wrapS = THREEModules.RepeatWrapping;
-                                        texture.wrapT = THREEModules.RepeatWrapping;
-                                        texture.repeat.set(20, 20); 
-                                        this.textureCache.set(colorImage, texture);
-                                    }
-                                    
-                                    mat.map = texture;
-                                    mat.color.setHex(0xffffff);
-                                } else {
-                                    mat.map = null;
-                                    mat.color.set(colorValue);
-                                }
-                                
-                                mat.needsUpdate = true;
-                                child.material = mat;
+                    if (!partObj) return;
+
+                    partObj.traverse(child => {
+                        if (!(child.isMesh && child.material)) return;
+
+                        const mat = child.material.clone();
+                        const hasUVs = child.geometry && child.geometry.attributes && child.geometry.attributes.uv;
+                        
+                        if (colorImage && hasUVs) {
+                            if (!this.textureCache) this.textureCache = new Map();
+                            let texture = this.textureCache.get(colorImage);
+                            if (!texture) {
+                                const textureLoader = new THREEModules.TextureLoader();
+                                texture = textureLoader.load(colorImage, () => {
+                                    this.rebuildMergedModel();
+                                });
+                                texture.wrapS = THREEModules.RepeatWrapping;
+                                texture.wrapT = THREEModules.RepeatWrapping;
+                                texture.repeat.set(20, 20); 
+                                this.textureCache.set(colorImage, texture);
                             }
-                        });
-                    }
+                            
+                            mat.map = texture;
+                            mat.color.setHex(0xffffff);
+                        } else {
+                            mat.map = null;
+                            mat.color.set(colorValue);
+                        }
+                        
+                        mat.needsUpdate = true;
+                        child.material = mat;
+                    });
                 });
                 this.rebuildMergedModel();
             };

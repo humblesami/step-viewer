@@ -51,7 +51,7 @@
                     </div>
 
                     <div class="glb_groups">
-                        <h3 class="o_horizontal_separator mt-4">Part Groups &amp; Customization</h3>
+                        <h3 class="o_horizontal_separator mt-4">Part Groups Customization</h3>
 
                         <field name="parts_group_ids" nolabel="1">
                             <list>

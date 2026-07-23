@@ -51,5 +51,5 @@ class PartsGroup(models.Model):
 
 class GlbParts(models.Model):
     _inherit = 'glb.part'
-    part_group_id = fields.Many2one('parts.group', string='Group', ondelete='cascade')
+    part_group_id = fields.Many2one('parts.group', string='Group')
 
