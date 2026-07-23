@@ -1447,7 +1447,16 @@ export class CadViewer {
             <div class="o_stp_preview_container" style="display: flex; flex-direction: row; width: 100vw; height: 100vh; overflow: hidden;">
                 <div id="popovers-container" style="flex-shrink: 0; position: relative; height: 100%;"></div>
                 <div id="three-container" style="flex-grow: 1; height: 100%; cursor: grab; position: relative; overflow: hidden;"></div>
-                <div id="loader-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;"></div>
+                <div id="loader-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; display: none; justify-content: center; align-items: center; background: rgba(0,0,0,0.6); pointer-events: auto;">
+                    <div class="o_stp_glass_loader">
+                        <div class="glass-orb"><div class="inner-spin"></div></div>
+                        <div class="loader-text text-center">
+                            <h2>3d Model Viewer</h2>
+                            <div class="progress-bar-container"><div class="progress-fill" style="width: 100%; animation: none;"></div></div>
+                            <p class="message"></p>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
 
@@ -1456,25 +1465,18 @@ export class CadViewer {
     }
 
     setProcessing(isProcessing, message = 'Processing...') {
-        let loaderContainer = this.container.querySelector('#loader-container');
-        if (!loaderContainer) return;
+        let loaderWrapper = this.container.querySelector('#loader-container');
+        console.log(5545, "showing loaiud", isProcessing)
+        if (!loaderWrapper) return;
         if (isProcessing) {
-            loaderContainer.innerHTML = `
-                <div class="o_stp_glass_loader">
-                    <div class="glass-orb"><div class="inner-spin"></div></div>
-                    <div class="loader-text text-center">
-                        <h2>3d Model Viewer</h2>
-                        <div class="progress-bar-container"><div class="progress-fill" style="width: 100%; animation: none;"></div></div>
-                        <p>${message}</p>
-                    </div>
-                </div>
-            `;
-            loaderContainer.style.display = 'flex';
+            let msgEl = loaderWrapper.querySelector('.message');
+            if (msgEl) msgEl.innerText = message;
+            loaderWrapper.style.display = 'flex';
         } else {
             if (this.state.loading_model) {
                 this.updateUI();
             } else {
-                loaderContainer.innerHTML = '';
+                loaderWrapper.style.display = 'none';
             }
         }
     }
@@ -1508,21 +1510,11 @@ export class CadViewer {
 
         // Loader
         if (this.state.loading_model) {
-            loaderContainer.innerHTML = `
-                <div class="o_stp_glass_loader">
-                    <div class="glass-orb"><div class="inner-spin"></div></div>
-                    <div class="loader-text text-center">
-                        <h2>3d Model Viewer</h2>
-                        <div class="progress-bar-container"><div class="progress-fill"></div></div>
-                        <p>Virtualizing Assembly...</p>
-                        ${!this.state.cancelling ? '<button class="interrupt mt-4 px-4 py-2">Cancel & Close</button>' : '<span class="cancelling">Cancelling...</span>'}
-                    </div>
-                </div>
-            `;
+            this.setProcessing(true, 'Loading...');
             const interruptBtn = loaderContainer.querySelector('.interrupt');
             if (interruptBtn) interruptBtn.onclick = () => this.interruptAndClose();
         } else {
-            loaderContainer.innerHTML = '';
+            this.setProcessing(false);
         }
     }
 
@@ -1685,4 +1677,4 @@ if (document.readyState === 'loading') {
 } else {
     initApp();
 }
-console.log(545454);
+console.log(875555);

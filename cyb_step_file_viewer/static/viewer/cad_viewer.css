@@ -29,3 +29,18 @@ body.viewer-body {
 .viewer-body .sidebar-toolbar-buttons button{
     cursor: pointer;
 }
+.viewer-body #loader-container{
+    position: absolute; top: 0; left: 0; width: 100%; 
+    display: none; justify-content: center; align-items: center;
+    height: 100%; pointer-events: none; z-index: 9999;
+    background-color: #333333;
+    color: white;
+    opacity: 0.8;
+}
+
+.viewer-body #loader-container .message{
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center
+}
