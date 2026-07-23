@@ -48,7 +48,10 @@ body.viewer-body {
     border-bottom: 1px solid #e0e0e0; padding-bottom: 10px; margin-bottom: 10px; 
     display: flex; align-items: flex-start; gap: 8px;
 }
-.btn-sidebar-collapse.btn {
+.viewer-body  .o_stp_parts_popup i{
+    font-size: 16px;
+}
+.viewer-body .btn-sidebar-collapse.btn {
     background: #dbebed;
     color: #333333;
     padding: 6px 13px;

@@ -930,8 +930,6 @@ export class CadViewer {
             };
         });
 
-        console.log(777);
-
         // Group level visibility binding
         popoversContainer.querySelectorAll('.btn-vis-group').forEach(btn => {
             btn.onclick = (e) => {
@@ -951,7 +949,7 @@ export class CadViewer {
                 if (icon) {
                     icon.className = newVis ? 'fa fa-eye' : 'fa fa-eye-slash';
                 }
-
+                icon.style.color = '#182825';
                 this.rebuildMergedModel();
             };
         });
@@ -1537,7 +1535,6 @@ export class CadViewer {
 
     setProcessing(isProcessing, message = 'Processing...') {
         let loaderWrapper = this.container.querySelector('#loader-container');
-        console.log(5545, "showing loaiud", isProcessing)
         if (!loaderWrapper) return;
         if (isProcessing) {
             let msgEl = loaderWrapper.querySelector('.message');
@@ -1748,4 +1745,3 @@ if (document.readyState === 'loading') {
 } else {
     initApp();
 }
-console.log(875555);
