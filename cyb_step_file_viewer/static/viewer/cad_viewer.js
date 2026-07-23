@@ -1404,12 +1404,11 @@ async function initApp() {
 
     let customizationData = null;
     let productColorsData = null;
-    if (line_id || product_id) {
+    if (line_id) {
         try {
             let url = '/step_file_viewer/get_customization';
             let req_body = {};
             if (line_id) req_body.line_id = line_id;
-            if (product_id) req_body.product_id = product_id;
             if (access_token) req_body.access_token = access_token;
 
             const response = await fetch(url, {
@@ -1419,13 +1418,16 @@ async function initApp() {
             });
             if (response.ok) {
                 const responseJSON = await response.json();
-                if (responseJSON.result && responseJSON.result.status === 'success') {
-                    if (responseJSON.result.customization_json) {
-                        customizationData = JSON.parse(responseJSON.result.customization_json);
+                const jsoonResult = responseJSON.result;
+                if (jsoonResult && jsoonResult.status === 'success') {
+                    if (jsoonResult.customization_json) {
+                        customizationData = JSON.parse(jsoonResult.customization_json);
                     }
-                    if (responseJSON.result.product_colors) {
-                        productColorsData = responseJSON.result.product_colors;
+                    if (jsoonResult.product_colors) {
+                        productColorsData = jsoonResult.product_colors;
                     }
+                    product_id = jsoonResult.product_id;
+                    product_tmpl_id = jsoonResult.product_tmpl_id;
                 }
             }
         } catch (e) { console.error('Error fetching customization', e); }

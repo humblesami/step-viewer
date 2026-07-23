@@ -37,12 +37,8 @@ class ProductStepViewerController(http.Controller):
         try:
             line_id = kwargs.get('line_id')
             access_token = kwargs.get('access_token')
-            product_id = kwargs.get('product_id')
-            product_template_id = kwargs.get('')
 
             customization_json = False
-            product_colors = []
-            product_template = False
 
             if line_id:
                 sale_order_line = request.env['sale.order.line'].sudo().browse(int(line_id))
@@ -55,8 +51,16 @@ class ProductStepViewerController(http.Controller):
             else:
                 return {'status': 'error', 'message': 'Missing line id or product id'}
 
+            product_obj = sale_order_line.product_id
+            if product_obj:
+                product_id = product_obj.id
+                prodtct_tmpl_id = product_obj.product_tmpl_id.id
+
+            
             return {
                 'status': 'success',
+                'product_id': product_id,
+                'product_tmpl_id': prodtct_tmpl_id,                
                 'customization_json': customization_json,
             }
         except Exception as e:

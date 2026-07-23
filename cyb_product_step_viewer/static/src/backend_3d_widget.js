@@ -77,7 +77,7 @@ export class Many2One3DViewer extends Component {
 
         let productId = null;
         let lineId = null;
-        let templateId = null;
+        let product_templateId = '';
 
         if (this.props.record.resModel === 'sale.order.line') {
             lineId = this.props.record.resId;
@@ -89,7 +89,7 @@ export class Many2One3DViewer extends Component {
         } else if (this.props.record.resModel === 'product.product') {
             productId = this.props.record.resId;
         } else if (this.props.record.resModel === 'product.template') {
-            templateId = this.props.record.resId;
+            product_templateId = this.props.record.resId;
         }
 
         // Build your URL matching your exact frontend logic
@@ -99,8 +99,8 @@ export class Many2One3DViewer extends Component {
         if (productId) {
             query_params += `&product_id=${productId}`;
         }
-        if (templateId) {
-            query_params += `&product_tmpl_id=${templateId}`;
+        if (product_templateId) {
+            query_params += `&product_tmpl_id=${product_templateId}`;
         }
         if (lineId) {
             query_params += `&line_id=${lineId}`;
