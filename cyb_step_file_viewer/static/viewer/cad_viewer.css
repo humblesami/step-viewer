@@ -12,10 +12,10 @@ body.viewer-body {
     width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;
 }
 .o_stp_parts_popup{
-    position: absolute; left: 10px; top: 10px; z-index: 1000; 
-    padding: 15px; border-radius: 8px; color: white; 
+    position: absolute; left: 0px; top: 0px; z-index: 1000; 
+    padding: 15px; color: white; 
     max-width: 50vw; min-width: 50px;
-    max-height: 99vh;
+    max-height: 95vh;
     background-color: #7c6a6a;
     overflow: auto;
 }

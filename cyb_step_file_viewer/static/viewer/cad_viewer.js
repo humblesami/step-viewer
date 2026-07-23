@@ -617,11 +617,32 @@ export class CadViewer {
 
         let results = [];
         for(const key in groupsDict) {
+            let groupConfig = groups.find(g => g.displayName === key);
+            let colors = groupConfig ? (groupConfig.colors || []) : [];
+            
+            if (key === 'Others') {
+                colors = [
+                    { color_name: 'White', color_value: '#ffffff' },
+                    { color_name: 'Black', color_value: '#000000' },
+                    { color_name: 'Golden', color_value: '#ffd700' },
+                    { color_name: 'Wood', color_value: '#8b5a2b' },
+                    { color_name: 'Red', color_value: '#ff0000' },
+                    { color_name: 'Green', color_value: '#008000' },
+                    { color_name: 'Blue', color_value: '#0000ff' },
+                    { color_name: 'Grey', color_value: '#808080' },
+                    { color_name: 'Silver', color_value: '#c0c0c0' },
+                    { color_name: 'Orange', color_value: '#ffa500' },
+                    { color_name: 'Purple', color_value: '#800080' }
+                ];
+            }
+
             results.push({
+                id: groupConfig ? groupConfig.id : "group_others",
                 displayName: key,
                 name: key,
-                isOthers: key == 'Others',
-                parts: groupsDict[key]
+                isOthers: key === 'Others',
+                parts: groupsDict[key],
+                colors: colors
             })
         }
         return results;
@@ -675,19 +696,27 @@ export class CadViewer {
                 </div>
                 
                 <!-- Group List Area -->
-                <div class="sidebar-content" style="display: ${displayGroups}; max-height: calc(100vh - 100px); overflow-y: auto;">
+                <div class="sidebar-content" style="display: ${displayGroups};">
                     ${groupsList.map((group, groupIdx) => `
                         <div class="group-item">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <strong class="group-name">
-                                    ${group.displayName} (${group.parts.length} parts)
+                                    ${group.isOthers ? "Others" : `${group.displayName} (${group.parts.length} parts)`}
                                 </strong>
                                 <div class="group-actions" style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="color" class="group-color-picker mini-color-picker" data-group-index="${groupIdx}" title="Group Color" value="#ffffff" style="width: 20px; height: 20px; padding: 0; border: none; cursor: pointer;">
                                     <button class="btn-vis-group" data-group-index="${groupIdx}" style="background: none; border: none; color: white; cursor: pointer;">
                                         <i class="fa fa-eye"></i>
                                     </button>
                                 </div>
+                            </div>
+                            <!-- Palette Grid -->
+                            <div class="color-palette-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; justify-items: center;">
+                                ${group.colors.map((c, colorIdx) => {
+                                    const bgStyle = c.color_image ? `background-image: url('${c.color_image}'); background-size: cover; background-position: center;` : `background-color: ${c.color_value};`;
+                                    return `
+                                    <button class="color-btn" data-group-index="${groupIdx}" data-color-value="${c.color_value}" title="${c.color_name}" style="border: 2px solid transparent; border-radius: 50%; width: 30px; height: 30px; padding: 0; cursor: pointer; ${bgStyle} box-shadow: 0 0 3px rgba(0,0,0,0.5);"></button>
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
                     `).join('')}
@@ -766,19 +795,28 @@ export class CadViewer {
             };
         }
         
-        // Group level color binding
-        popoversContainer.querySelectorAll('.group-color-picker').forEach(picker => {
-            picker.oninput = (e) => {
-                const groupIdx = parseInt(e.target.dataset.groupIndex, 10);
+        // Group level color binding (palette)
+        popoversContainer.querySelectorAll('.color-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                const groupIdx = parseInt(e.currentTarget.dataset.groupIndex, 10);
+                const colorValue = e.currentTarget.dataset.colorValue;
                 const group = groups[groupIdx];
+                
+                // Update active styling
+                const grid = e.currentTarget.closest('.color-palette-grid');
+                if (grid) {
+                    grid.querySelectorAll('.color-btn').forEach(b => b.style.borderColor = 'transparent');
+                    e.currentTarget.style.borderColor = '#4CAF50';
+                }
+
                 group.parts.forEach(p => {
-                    p.color = e.target.value;
+                    p.color = colorValue;
                     const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
                     if (partObj) {
                         partObj.traverse(child => {
                             if (child.isMesh && child.material) {
                                 const mat = child.material.clone();
-                                mat.color.set(p.color);
+                                mat.color.set(colorValue);
                                 mat.needsUpdate = true;
                                 child.material = mat;
                             }
