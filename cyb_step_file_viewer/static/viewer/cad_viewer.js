@@ -741,7 +741,7 @@ export class CadViewer {
     bindGroupsSidebarEvents(popoversContainer) {
         if (!this.options.odooPayload || !this.options.odooPayload.groups) return;
         
-        const groups = this.getStructuralGroups();
+        const uiPartGroups = this.getStructuralGroups();
 
         // Collapse toggle binding
         const collapseBtn = popoversContainer.querySelector('.btn-sidebar-collapse');
@@ -821,10 +821,10 @@ export class CadViewer {
             btn.onclick = (e) => {
                 const groupIdx = parseInt(e.currentTarget.dataset.groupIndex, 10);
                 const colorValue = e.currentTarget.dataset.colorValue;
-                const colorImage = e.currentTarget.dataset.colorImage;
-                const group = groups[groupIdx];
+                const color_image = e.currentTarget.dataset.colorImage;
+                const group = uiPartGroups[groupIdx];
                 
-                if (colorImage) {
+                if (color_image) {
                     let missingUVs = false;
                     group.parts.forEach(p => {
                         const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
@@ -854,7 +854,8 @@ export class CadViewer {
 
                 group.parts.forEach(p => {
                     p.color = colorValue;
-                    p.colorImage = colorImage;
+                    p.colorImage = color_image;
+
                     const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
                     if (!partObj) return;
 
@@ -864,18 +865,18 @@ export class CadViewer {
                         const mat = child.material.clone();
                         const hasUVs = child.geometry && child.geometry.attributes && child.geometry.attributes.uv;
                         
-                        if (colorImage && hasUVs) {
+                        if (color_image && hasUVs) {
                             if (!this.textureCache) this.textureCache = new Map();
-                            let texture = this.textureCache.get(colorImage);
+                            let texture = this.textureCache.get(color_image);
                             if (!texture) {
                                 const textureLoader = new THREEModules.TextureLoader();
-                                texture = textureLoader.load(colorImage, () => {
+                                texture = textureLoader.load(color_image, () => {
                                     this.rebuildMergedModel();
                                 });
                                 texture.wrapS = THREEModules.RepeatWrapping;
                                 texture.wrapT = THREEModules.RepeatWrapping;
                                 texture.repeat.set(20, 20); 
-                                this.textureCache.set(colorImage, texture);
+                                this.textureCache.set(color_image, texture);
                             }
                             
                             mat.map = texture;
@@ -897,7 +898,7 @@ export class CadViewer {
         popoversContainer.querySelectorAll('.btn-vis-group').forEach(btn => {
             btn.onclick = (e) => {
                 const groupIdx = parseInt(e.currentTarget.dataset.groupIndex, 10);
-                const group = groups[groupIdx];
+                const group = uiPartGroups[groupIdx];
                 const anyVisible = group.parts.some(p => p.visible);
                 const newVis = !anyVisible;
                 
