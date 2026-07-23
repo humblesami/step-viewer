@@ -62,7 +62,7 @@
                             <form string="Part Group Configuration">
                                 <group>
                                     <field name="group_title" string="Group Name" required="1"/>
-                                    <field name="color_template_id" string="Allowed Colors Template"/>
+                                    <field name="color_template_id" string="Colors Template"/>
                                     <field name="part_count" string="Count" readonly="1"/>
                                 </group>
                                 <field name="part_ids" nolabel="1" widget="many2many" domain="[('att_id', '=', parent.step_file_id)]">

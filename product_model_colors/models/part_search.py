@@ -29,8 +29,8 @@ class PartsGroup(models.Model):
     _name = 'parts.group'
     
     product_tmpl_id = fields.Many2one('product.template')
-    group_title = fields.Char()
-    color_template_id = fields.Many2one('colors.template')
+    group_title = fields.Char(required=True)
+    color_template_id = fields.Many2one('colors.template', required=True)
     part_count = fields.Integer(compute='_get_parts_count')
     part_ids = fields.One2many('glb.part', 'part_group_id')
     

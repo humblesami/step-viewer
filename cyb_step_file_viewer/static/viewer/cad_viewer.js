@@ -624,8 +624,6 @@ export class CadViewer {
                 parts: groupsDict[key]
             })
         }
-
-        console.log(3333, groupsDict);
         return results;
     }
 
@@ -647,7 +645,7 @@ export class CadViewer {
         const hasLineId = urlParams.has('line_id');
 
         return `
-            <div class="popover o_stp_parts_popup ${collapseClass}" style="width: ${popupWidth}; ${resizeStyle} display: block; position: absolute; left: 10px; top: 10px; z-index: 1000; background: rgba(30,30,30,0.95); padding: 15px; border-radius: 8px; color: white; overflow: hidden; max-width: 50vw; min-width: 50px;">
+            <div class="popover o_stp_parts_popup ${collapseClass}" style="width: ${popupWidth}; ${resizeStyle}">
                 
                 <!-- Toolbar Header Area -->
                 <div class="sidebar-header" style="border-bottom: 1px solid #444; padding-bottom: 10px; margin-bottom: 10px; display: flex; flex-direction: ${flexDir}; align-items: flex-start; gap: 8px;">
