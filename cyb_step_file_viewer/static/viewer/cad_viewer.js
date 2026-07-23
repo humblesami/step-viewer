@@ -755,6 +755,9 @@ export class CadViewer {
                         <button class="btn btn-dark tool-btn tool-btn-snapshot" title="Take Photo (PNG)" style="padding: 5px 10px;">
                             <i class="fa fa-camera"></i>
                         </button>
+                        <button class="btn btn-dark tool-btn tool-btn-download-model" title="Download 3D Model (GLB)" style="padding: 5px 10px;">
+                            <i class="fa fa-download"></i>
+                        </button>
                         ${hasLineId ? `
                         <button class="btn btn-dark tool-btn tool-btn-save-finished" title="Save Finished 3D Model" style="padding: 5px 10px; color: #4CAF50;">
                             <i class="fa fa-save"></i>
@@ -845,6 +848,9 @@ export class CadViewer {
         
         const snapshotBtn = popoversContainer.querySelector('.tool-btn-snapshot');
         if (snapshotBtn) snapshotBtn.onclick = () => this.takeSnapshot();
+        
+        const downloadModelBtn = popoversContainer.querySelector('.tool-btn-download-model');
+        if (downloadModelBtn) downloadModelBtn.onclick = () => this.downloadModel();
         
         const saveBtn = popoversContainer.querySelector('.tool-btn-save-finished');
         if (saveBtn) {
