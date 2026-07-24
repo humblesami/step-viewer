@@ -412,9 +412,9 @@ export class CadViewer {
 
                 if (this.options.customization && this.options.customization.parts) {
                     // Apply saved customizations
-                    const customized_parts = this.options.customization.parts;
+                    const customizations = this.options.customization.parts;
                     const customMap = new Map();
-                    customized_parts.forEach(c => {
+                    customizations.forEach(c => {
                         // Fallback to id if name is missing (for older saved models)
                         if (c.name) customMap.set(c.name, c);
                         else customMap.set(c.id, c);
@@ -425,20 +425,19 @@ export class CadViewer {
                         if (custom) {
                             part.visible = custom.visible;
                             part.color = custom.color;
-                            part.colorImage = custom.image;
                             const obj = this.originalModel.getObjectByProperty('uuid', part.id);
-                            if (!obj) return;
-                            obj.visible = custom.visible;
-                            if (custom.color && custom.color !== '#ffffff') {
-                                obj.traverse((node) => {
-                                    if (node.isMesh) {
-                                        const oldMat = node.material;
-                                        node.material = node.material.clone();
-                                        self.loadImageOnpart(node.material, custom.image, custom.color);
-                                        //node.material.color.set(custom.color);
-                                        if (oldMat) oldMat.dispose();
-                                    }
-                                });
+                            if (obj) {
+                                obj.visible = custom.visible;
+                                if (custom.color && custom.color !== '#ffffff') {
+                                    obj.traverse((node) => {
+                                        if (node.isMesh) {
+                                            const oldMat = node.material;
+                                            node.material = node.material.clone();
+                                            self.loadImageOnpart(node.material, custom.image, custom.color);
+                                            if (oldMat) oldMat.dispose();
+                                        }
+                                    });
+                                }
                             }
                         }
                     });
@@ -920,8 +919,8 @@ export class CadViewer {
                     partObj.traverse(child => {
                         if (!(child.isMesh && child.material)) return;
 
-                        const mat = child.material.clone();                        
-                        self.loadImageOnpart(mat, colorValue, color_image, colorValue);
+                        const mat = child.material.clone();
+                        self.loadImageOnpart(mat, color_image, colorValue);
                         
                         mat.needsUpdate = true;
                         child.material = mat;
@@ -1409,7 +1408,6 @@ async function initApp() {
 
     let customizationData = null;
     let productColorsData = null;
-    console.log(445555, line_id);
     if (line_id) {
         try {
             let url = '/step_file_viewer/get_customization';
@@ -1424,17 +1422,16 @@ async function initApp() {
             });
             if (response.ok) {
                 const responseJSON = await response.json();
-                const jsonResult = responseJSON.result;
-                if (jsonResult && jsonResult.status === 'success') {
-                    if (jsonResult.customization_json) {
-                        customizationData = JSON.parse(jsonResult.customization_json || '{parts:[]}');
+                const jsoonResult = responseJSON.result;
+                if (jsoonResult && jsoonResult.status === 'success') {
+                    if (jsoonResult.customization_json) {
+                        customizationData = JSON.parse(jsoonResult.customization_json);
                     }
-                    if (jsonResult.product_colors) {
-                        productColorsData = jsonResult.product_colors;
+                    if (jsoonResult.product_colors) {
+                        productColorsData = jsoonResult.product_colors;
                     }
-                    console.log(82333, customizationData.parts);
-                    product_id = jsonResult.product_id;
-                    product_tmpl_id = jsonResult.product_tmpl_id;
+                    product_id = jsoonResult.product_id;
+                    product_tmpl_id = jsoonResult.product_tmpl_id;
                 }
             }
         } catch (e) { console.error('Error fetching customization', e); }
@@ -1473,8 +1470,6 @@ async function initApp() {
     if ((!product_id && !line_id) || hide_save) {
         return;
     }
-
-
 
     async function saveCustomizations(customizationJSON, dt1) {
         try {
