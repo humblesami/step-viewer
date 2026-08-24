@@ -82,7 +82,7 @@ function applyTriplanarMapping(material, textureScale = 0.05) {
             }
             `
         );
-        
+
         shader.fragmentShader = shader.fragmentShader.replace(
             '#include <map_fragment>',
             `
@@ -421,25 +421,21 @@ export class CadViewer {
                     });
 
                     this.state.parts.forEach(part => {
-                        const custom = customMap.get(part.name) || customMap.get(part.id);
-                        if (custom) {
-                            part.visible = custom.visible;
-                            part.color = custom.color;
-                            const obj = this.originalModel.getObjectByProperty('uuid', part.id);
-                            if (obj) {
-                                obj.visible = custom.visible;
-                                if (custom.color && custom.color !== '#ffffff') {
-                                    obj.traverse((node) => {
-                                        if (node.isMesh) {
-                                            const oldMat = node.material;
-                                            node.material = node.material.clone();
-                                            self.loadImageOnpart(node.material, custom.image, custom.color);
-                                            if (oldMat) oldMat.dispose();
-                                        }
-                                    });
-                                }
-                            }
-                        }
+                        const customPart = customMap.get(part.name) || customMap.get(part.id);
+                        if (!customPart) return;
+                        part.visible = customPart.visible;
+                        part.color = customPart.color;
+                        const meshPart = this.originalModel.getObjectByProperty('uuid', part.id);
+                        if (!meshPart) return;
+                        meshPart.visible = customPart.visible;
+                        if (!(customPart.color && customPart.color !== '#ffffff')) return;
+                        meshPart.traverse((node) => {
+                            if (!node.isMesh) return;
+                            const oldMat = node.material;
+                            node.material = node.material.clone();
+                            self.loadImageOnpart(node.material, customPart.image, customPart.color);
+                            if (oldMat) oldMat.dispose();
+                        });
                     });
                 }
 
@@ -639,8 +635,8 @@ export class CadViewer {
         if (!this.options.odooPayload || !this.options.odooPayload.groups) {
             return [];
         }
-        
-        let groupsDict = {'Others': []}
+
+        let groupsDict = { 'Others': [] }
         const groups = this.options.odooPayload.groups;
 
         this.state.parts.forEach(part => {
@@ -663,10 +659,10 @@ export class CadViewer {
         });
 
         let results = [];
-        for(const key in groupsDict) {
+        for (const key in groupsDict) {
             let groupConfig = groups.find(g => g.displayName === key);
             let colors = groupConfig ? (groupConfig.colors || []) : [];
-            
+
             if (key === 'Others') {
                 colors = [
                     { color_name: 'White', color_value: '#ffffff' },
@@ -696,31 +692,31 @@ export class CadViewer {
                 colors: colors
             });
         }
-        
+
         // Move "Others" to the bottom of the array
         const othersIndex = results.findIndex(g => g.isOthers);
         if (othersIndex !== -1) {
             const othersGroup = results.splice(othersIndex, 1)[0];
             results.push(othersGroup);
         }
-        
+
         return results;
     }
 
     renderGroupsSidebar() {
         if (!this.options.odooPayload || !this.options.odooPayload.groups) return '';
-        
+
         const groupsList = this.getStructuralGroups();
-        
+
         let savedWidth = localStorage.getItem('left_popup_width') || '300px';
-        
+
         const collapseClass = this.state.isSidebarCollapsed ? 'sidebar-collapsed' : '';
         const popupWidth = this.state.isSidebarCollapsed ? '50px' : savedWidth;
         const displayGroups = this.state.isSidebarCollapsed ? 'none' : 'block';
         const flexDir = this.state.isSidebarCollapsed ? 'column' : 'row';
         const chevronClass = this.state.isSidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left';
         const resizeStyle = this.state.isSidebarCollapsed ? '' : 'resize: horizontal;';
-        
+
         const urlParams = new URLSearchParams(window.location.search);
         const hasLineId = urlParams.has('line_id');
 
@@ -774,12 +770,12 @@ export class CadViewer {
                             <!-- Palette Grid -->
                             <div class="color-palette-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; justify-items: center;">
                                 ${group.colors.map((c, colorIdx) => {
-                                    const bgStyle = c.color_image ? `background-image: url('${c.color_image}'); background-size: cover; background-position: center;` : `background-color: ${c.color_value};`;
-                                    const imageAttr = c.color_image ? `data-color-image="${c.color_image}"` : '';
-                                    return `
+            const bgStyle = c.color_image ? `background-image: url('${c.color_image}'); background-size: cover; background-position: center;` : `background-color: ${c.color_value};`;
+            const imageAttr = c.color_image ? `data-color-image="${c.color_image}"` : '';
+            return `
                                     <button class="color-btn" data-group-index="${groupIdx}" data-color-value="${c.color_value}" ${imageAttr} title="${c.color_name}" style="border: 2px solid transparent; border-radius: 50%; width: 30px; height: 30px; padding: 0; cursor: pointer; ${bgStyle} box-shadow: 0 0 3px rgba(0,0,0,0.5);"></button>
                                     `;
-                                }).join('')}
+        }).join('')}
                             </div>
                         </div>
                     `).join('')}
@@ -788,7 +784,7 @@ export class CadViewer {
         `;
     }
 
-    loadImageOnpart(mat, color_image, colorValue){
+    loadImageOnpart(mat, color_image, colorValue) {
         if (color_image) {
             if (!this.textureCache) this.textureCache = new Map();
             let texture = this.textureCache.get(color_image);
@@ -801,7 +797,7 @@ export class CadViewer {
                 texture.wrapT = THREEModules.RepeatWrapping;
                 this.textureCache.set(color_image, texture);
             }
-            
+
             applyTriplanarMapping(mat, 0.02);
             mat.map = texture;
             mat.color.setHex(0xffffff);
@@ -814,7 +810,7 @@ export class CadViewer {
     bindGroupsSidebarEvents(popoversContainer) {
         const self = this;
         if (!this.options.odooPayload || !this.options.odooPayload.groups) return;
-        
+
         const uiPartGroups = this.getStructuralGroups();
 
         // Collapse toggle binding
@@ -854,19 +850,19 @@ export class CadViewer {
         // Toolbar tools binding
         const zoomInBtn = popoversContainer.querySelector('.tool-btn-zoom-in');
         if (zoomInBtn) zoomInBtn.onclick = () => this.zoomIn();
-        
+
         const zoomOutBtn = popoversContainer.querySelector('.tool-btn-zoom-out');
         if (zoomOutBtn) zoomOutBtn.onclick = () => this.zoomOut();
-        
+
         const refreshBtn = popoversContainer.querySelector('.tool-btn-refresh');
         if (refreshBtn) refreshBtn.onclick = () => this.resetView();
-        
+
         const snapshotBtn = popoversContainer.querySelector('.tool-btn-snapshot');
         if (snapshotBtn) snapshotBtn.onclick = () => this.takeSnapshot();
-        
+
         const downloadModelBtn = popoversContainer.querySelector('.tool-btn-download-model');
         if (downloadModelBtn) downloadModelBtn.onclick = () => this.downloadModel();
-        
+
         const saveBtn = popoversContainer.querySelector('.tool-btn-save-finished');
         if (saveBtn) {
             saveBtn.onclick = () => {
@@ -881,7 +877,7 @@ export class CadViewer {
                         visible: p.visible
                     }));
                     const customizationJSON = JSON.stringify({ parts: modifications });
-                    
+
                     if (window.saveCustomizations) {
                         window.saveCustomizations(customizationJSON, dt1).finally(() => {
                             this.setProcessing(false);
@@ -893,15 +889,15 @@ export class CadViewer {
                 }, 50);
             };
         }
-        
+
         // Group level color binding (palette)
         popoversContainer.querySelectorAll('.color-btn').forEach(btn => {
             btn.onclick = (e) => {
                 const groupIdx = parseInt(e.currentTarget.dataset.groupIndex, 10);
                 const colorValue = e.currentTarget.dataset.colorValue;
                 const color_image = e.currentTarget.dataset.colorImage;
-                const group = uiPartGroups[groupIdx];            
-                
+                const group = uiPartGroups[groupIdx];
+
                 // Update active styling
                 const grid = e.currentTarget.closest('.color-palette-grid');
                 if (grid) {
@@ -921,7 +917,7 @@ export class CadViewer {
 
                         const mat = child.material.clone();
                         self.loadImageOnpart(mat, color_image, colorValue);
-                        
+
                         mat.needsUpdate = true;
                         child.material = mat;
                     });
@@ -937,13 +933,13 @@ export class CadViewer {
                 const group = uiPartGroups[groupIdx];
                 const anyVisible = group.parts.some(p => p.visible);
                 const newVis = !anyVisible;
-                
+
                 group.parts.forEach(p => {
                     p.visible = newVis;
                     const partObj = this.originalModel.getObjectByProperty('uuid', p.id);
                     if (partObj) partObj.visible = newVis;
                 });
-                
+
                 // Toggle icon
                 const icon = e.currentTarget.querySelector('i');
                 if (icon) {
@@ -1386,11 +1382,11 @@ export class CadViewer {
 async function initApp() {
     const root = document.getElementById('cad-viewer-root');
     if (!root) return;
-    
+
     let attachment_id = findQueryParam('file_id');
     let filename = findQueryParam('filename');
     let file_url = document.getElementById('step_viewer_file_url') ? document.getElementById('step_viewer_file_url').value : '';
-    
+
     if (attachment_id) {
         file_url = window.location.origin + `/web/content/${attachment_id}`;
         if (filename) {
