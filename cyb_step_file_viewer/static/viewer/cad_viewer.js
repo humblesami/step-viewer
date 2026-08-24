@@ -785,26 +785,24 @@ export class CadViewer {
     }
 
     loadImageOnpart(mat, color_image, colorValue) {
-        if (color_image) {
-            if (!this.textureCache) this.textureCache = new Map();
-            let texture = this.textureCache.get(color_image);
-            if (!texture) {
-                const textureLoader = new THREEModules.TextureLoader();
-                texture = textureLoader.load(color_image, () => {
-                    this.rebuildMergedModel();
-                });
-                texture.wrapS = THREEModules.RepeatWrapping;
-                texture.wrapT = THREEModules.RepeatWrapping;
-                this.textureCache.set(color_image, texture);
-            }
-
-            applyTriplanarMapping(mat, 0.02);
-            mat.map = texture;
-            mat.color.setHex(0xffffff);
-        } else {
+        if (!color_image) {
             mat.map = null;
             mat.color.set(colorValue);
         }
+        if (!this.textureCache) this.textureCache = new Map();
+        let texture = this.textureCache.get(color_image);
+        if (!texture) {
+            const textureLoader = new THREEModules.TextureLoader();
+            texture = textureLoader.load(color_image, () => {
+                this.rebuildMergedModel();
+            });
+            texture.wrapS = THREEModules.RepeatWrapping;
+            texture.wrapT = THREEModules.RepeatWrapping;
+            this.textureCache.set(color_image, texture);
+        }
+        applyTriplanarMapping(mat, 0.02);
+        mat.map = texture;
+        mat.color.setHex(0xffffff);
     }
 
     bindGroupsSidebarEvents(popoversContainer) {
