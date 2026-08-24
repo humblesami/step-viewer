@@ -800,7 +800,7 @@ export class CadViewer {
             texture.wrapT = THREEModules.RepeatWrapping;
             this.textureCache.set(color_image, texture);
         }
-        applyTriplanarMapping(mat, 0.02);
+        applyTriplanarMapping(mat, 0.001);
         mat.map = texture;
         mat.color.setHex(0xffffff);
     }
@@ -1512,3 +1512,4 @@ if (document.readyState === 'loading') {
 } else {
     initApp();
 }
+console.log(5555523);
