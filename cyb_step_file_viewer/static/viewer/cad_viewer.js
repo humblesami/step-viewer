@@ -421,21 +421,25 @@ export class CadViewer {
                     });
 
                     this.state.parts.forEach(part => {
-                        const customPart = customMap.get(part.name) || customMap.get(part.id);
-                        if (!customPart) return;
-                        part.visible = customPart.visible;
-                        part.color = customPart.color;
-                        const meshPart = this.originalModel.getObjectByProperty('uuid', part.id);
-                        if (!meshPart) return;
-                        meshPart.visible = customPart.visible;
-                        if (!(customPart.color && customPart.color !== '#ffffff')) return;
-                        meshPart.traverse((node) => {
-                            if (!node.isMesh) return;
-                            const oldMat = node.material;
-                            node.material = node.material.clone();
-                            self.loadImageOnpart(node.material, customPart.image, customPart.color);
-                            if (oldMat) oldMat.dispose();
-                        });
+                        const custom = customMap.get(part.name) || customMap.get(part.id);
+                        if (custom) {
+                            part.visible = custom.visible;
+                            part.color = custom.color;
+                            const obj = this.originalModel.getObjectByProperty('uuid', part.id);
+                            if (obj) {
+                                obj.visible = custom.visible;
+                                if (custom.color && custom.color !== '#ffffff') {
+                                    obj.traverse((node) => {
+                                        if (node.isMesh) {
+                                            const oldMat = node.material;
+                                            node.material = node.material.clone();
+                                            self.loadImageOnpart(node.material, custom.image, custom.color);
+                                            if (oldMat) oldMat.dispose();
+                                        }
+                                    });
+                                }
+                            }
+                        }
                     });
                 }
 
@@ -785,24 +789,26 @@ export class CadViewer {
     }
 
     loadImageOnpart(mat, color_image, colorValue) {
-        if (!color_image) {
+        if (color_image) {
+            if (!this.textureCache) this.textureCache = new Map();
+            let texture = this.textureCache.get(color_image);
+            if (!texture) {
+                const textureLoader = new THREEModules.TextureLoader();
+                texture = textureLoader.load(color_image, () => {
+                    this.rebuildMergedModel();
+                });
+                texture.wrapS = THREEModules.RepeatWrapping;
+                texture.wrapT = THREEModules.RepeatWrapping;
+                this.textureCache.set(color_image, texture);
+            }
+
+            applyTriplanarMapping(mat, 0.001);
+            mat.map = texture;
+            mat.color.setHex(0xffffff);
+        } else {
             mat.map = null;
             mat.color.set(colorValue);
         }
-        if (!this.textureCache) this.textureCache = new Map();
-        let texture = this.textureCache.get(color_image);
-        if (!texture) {
-            const textureLoader = new THREEModules.TextureLoader();
-            texture = textureLoader.load(color_image, () => {
-                this.rebuildMergedModel();
-            });
-            texture.wrapS = THREEModules.RepeatWrapping;
-            texture.wrapT = THREEModules.RepeatWrapping;
-            this.textureCache.set(color_image, texture);
-        }
-        applyTriplanarMapping(mat, 0.001);
-        mat.map = texture;
-        mat.color.setHex(0xffffff);
     }
 
     bindGroupsSidebarEvents(popoversContainer) {
@@ -1512,4 +1518,3 @@ if (document.readyState === 'loading') {
 } else {
     initApp();
 }
-console.log(5555523);
