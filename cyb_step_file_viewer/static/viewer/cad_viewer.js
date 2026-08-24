@@ -39,9 +39,13 @@ async function cacheModel(url, buffer) {
     } catch (e) { console.warn('Cache failed', e); }
 }
 
-function applyTriplanarMapping(material, textureScale = 0.05) {
+function applyTriplanarMapping(material, boxMin = new THREEModules.Vector3(0, 0, 0), boxSize = new THREEModules.Vector3(1, 1, 1)) {
+    material.userData.boxMin = boxMin;
+    material.userData.boxSize = boxSize;
+
     material.onBeforeCompile = (shader) => {
-        shader.uniforms.triplanarScale = { value: textureScale };
+        shader.uniforms.boxMin = { value: material.userData.boxMin || boxMin };
+        shader.uniforms.boxSize = { value: material.userData.boxSize || boxSize };
 
         shader.vertexShader = shader.vertexShader.replace(
             '#include <common>',
@@ -64,34 +68,52 @@ function applyTriplanarMapping(material, textureScale = 0.05) {
             '#include <common>',
             `
             #include <common>
-            uniform float triplanarScale;
+            uniform vec3 boxMin;
+            uniform vec3 boxSize;
             varying vec3 vWorldPos;
             varying vec3 vWorldNormal;
             
             vec4 getTriplanarMap(sampler2D map) {
-                vec3 blending = abs(vWorldNormal);
-                blending = normalize(max(blending, 0.00001)); 
-                float b = (blending.x + blending.y + blending.z);
-                blending /= vec3(b, b, b);
+                // FIX 1: UNIFORM SCALE. Use the largest dimension so the image stays proportional
+                // It fits the largest side and cleanly truncates/hides on the smaller sides.
+                float maxSize = max(boxSize.x, max(boxSize.y, boxSize.z));
+                vec3 normPos = (vWorldPos - boxMin) / max(maxSize, 0.0001);
                 
-                vec4 xaxis = texture2D(map, vWorldPos.yz * triplanarScale);
-                vec4 yaxis = texture2D(map, vWorldPos.xz * triplanarScale);
-                vec4 zaxis = texture2D(map, vWorldPos.xy * triplanarScale);
+                // Clamp to strictly prevent repeating
+                normPos = clamp(normPos, 0.0, 1.0);
+                
+                // FIX 2: SHARP BLENDING. Use pow(..., 16.0) to make razor-sharp corners 
+                // instead of blurry overlaps.
+                vec3 blending = pow(abs(vWorldNormal), vec3(16.0));
+                blending = normalize(max(blending, 0.00001)); 
+                blending /= (blending.x + blending.y + blending.z);
+                
+                // Project on 3 axes
+                vec4 xaxis = texture2D(map, vec2(normPos.z, 1.0 - normPos.y));
+                vec4 yaxis = texture2D(map, vec2(normPos.x, 1.0 - normPos.z));
+                vec4 zaxis = texture2D(map, vec2(normPos.x, 1.0 - normPos.y));
                 
                 return xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
             }
             `
         );
 
+        // FIX 3: RESTORE LIGHTING. We multiply the diffuseColor by our texture,
+        // and allow Three.js standard lights and shadows to handle the rest.
         shader.fragmentShader = shader.fragmentShader.replace(
             '#include <map_fragment>',
             `
             #ifdef USE_MAP
                 vec4 sampledDiffuseColor = getTriplanarMap(map);
-                diffuseColor *= sampledDiffuseColor;
+                diffuseColor *= sampledDiffuseColor; 
             #endif
             `
         );
+        // (Removed the opaque_fragment override so standard scene lighting works normally)
+    };
+
+    material.customProgramCacheKey = function () {
+        return 'triplanar_' + (material.map ? material.map.id : 'nomap') + '_sharp';
     };
 }
 
@@ -428,12 +450,12 @@ export class CadViewer {
                             const obj = this.originalModel.getObjectByProperty('uuid', part.id);
                             if (obj) {
                                 obj.visible = custom.visible;
-                                if (custom.color && custom.color !== '#ffffff') {
+                                if ((custom.color && custom.color !== '#ffffff') || custom.image) {
                                     obj.traverse((node) => {
                                         if (node.isMesh) {
                                             const oldMat = node.material;
                                             node.material = node.material.clone();
-                                            self.loadImageOnpart(node.material, custom.image, custom.color);
+                                            this.loadImageOnpart(node.material, custom.image, custom.color, obj);
                                             if (oldMat) oldMat.dispose();
                                         }
                                     });
@@ -525,7 +547,10 @@ export class CadViewer {
 
                 if (isEffectiveVisible) {
                     const mat = node.material;
-                    const key = `${mat.color.getHex()}_${mat.opacity}_${mat.transparent}_${mat.metalness || 0}_${mat.roughness || 1}`;
+                    const mapId = mat.map ? mat.map.id : 0;
+                    const boxKey = mat.userData && mat.userData.boxMin && mat.userData.boxSize ?
+                        `${mat.userData.boxMin.x.toFixed(2)}_${mat.userData.boxMin.y.toFixed(2)}_${mat.userData.boxMin.z.toFixed(2)}_${mat.userData.boxSize.x.toFixed(2)}_${mat.userData.boxSize.y.toFixed(2)}_${mat.userData.boxSize.z.toFixed(2)}` : 'nobox';
+                    const key = `${mat.color.getHex()}_${mat.opacity}_${mat.transparent}_${mat.metalness || 0}_${mat.roughness || 1}_${mapId}_${boxKey}`;
 
                     if (!materialGroups.has(key)) {
                         materialGroups.set(key, { material: mat, geometries: [] });
@@ -788,26 +813,56 @@ export class CadViewer {
         `;
     }
 
-    loadImageOnpart(mat, color_image, colorValue) {
+    loadImageOnpart(mat, color_image, colorValue, partObj = null) {
         if (color_image) {
             if (!this.textureCache) this.textureCache = new Map();
             let texture = this.textureCache.get(color_image);
             if (!texture) {
                 const textureLoader = new THREEModules.TextureLoader();
-                texture = textureLoader.load(color_image, () => {
+                texture = textureLoader.load(color_image, (loadedTex) => {
+                    loadedTex.colorSpace = THREEModules.SRGBColorSpace;
                     this.rebuildMergedModel();
                 });
-                texture.wrapS = THREEModules.RepeatWrapping;
-                texture.wrapT = THREEModules.RepeatWrapping;
+                texture.wrapS = THREEModules.ClampToEdgeWrapping;
+                texture.wrapT = THREEModules.ClampToEdgeWrapping;
+                texture.colorSpace = THREEModules.SRGBColorSpace;
                 this.textureCache.set(color_image, texture);
+            } else {
+                texture.wrapS = THREEModules.ClampToEdgeWrapping;
+                texture.wrapT = THREEModules.ClampToEdgeWrapping;
             }
 
-            applyTriplanarMapping(mat, 0.001);
+            let boxMin = new THREEModules.Vector3(0, 0, 0);
+            let boxSize = new THREEModules.Vector3(1, 1, 1);
+            if (partObj) {
+                const box = new THREEModules.Box3().setFromObject(partObj);
+                if (!box.isEmpty()) {
+                    boxMin = box.min.clone();
+                    boxSize = box.getSize(new THREEModules.Vector3());
+                }
+            }
+
+            applyTriplanarMapping(mat, boxMin, boxSize);
             mat.map = texture;
             mat.color.setHex(0xffffff);
+
+            // Adjust material properties for realistic textured surfaces (e.g., wood)
+            mat.roughness = 0.8; // Matte finish, not too shiny
+            mat.metalness = 0.0;
+
+            mat.needsUpdate = true;
         } else {
             mat.map = null;
+            delete mat.onBeforeCompile;
+            delete mat.customProgramCacheKey;
+            mat.userData.boxMin = null;
+            mat.userData.boxSize = null;
             mat.color.set(colorValue);
+
+            // Restore default properties for untextured parts
+            mat.roughness = 1.0;
+
+            mat.needsUpdate = true;
         }
     }
 
@@ -920,7 +975,7 @@ export class CadViewer {
                         if (!(child.isMesh && child.material)) return;
 
                         const mat = child.material.clone();
-                        self.loadImageOnpart(mat, color_image, colorValue);
+                        self.loadImageOnpart(mat, color_image, colorValue, partObj);
 
                         mat.needsUpdate = true;
                         child.material = mat;
