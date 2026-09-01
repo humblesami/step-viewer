@@ -93,7 +93,12 @@ function applyTriplanarMapping1(material, textureScale = 0.05) {
             `
         );
     };
+
+    material.customProgramCacheKey = function () {
+        return 'triplanar1_' + (material.map ? material.map.id : 'nomap') + '_' + textureScale;
+    };
 }
+
 function applyTriplanarMapping(material, boxMin = new THREEModules.Vector3(0, 0, 0), boxSize = new THREEModules.Vector3(1, 1, 1)) {
     material.userData.boxMin = boxMin;
     material.userData.boxSize = boxSize;
@@ -200,18 +205,18 @@ export class CadViewer {
 
         const defaultSettings = {
             lighting: {
-                ambientIntensity: 0.4,
-                mainIntensity: 1.7,
-                hemiIntensity: 0.5,
-                // FIX 3: Lower exposure from 2.2 → 1.2. The old value over-exposed textured
-                // surfaces (bright wood → blown-out white). Still user-adjustable via Lights panel.
-                exposure: 1.2,
+                ambientIntensity: 0.2,
+                mainIntensity: 1.0,
+                hemiIntensity: 0.2,
+                exposure: 1.0,
             },
             edgeColor: "#000000",
             edgeOpacity: 1,
             bgColor: "#ffffff",
             showEdges: true,
         };
+
+        console.log(defaultSettings);
 
         const savedSettings = JSON.parse(localStorage.getItem('stp_viewer_settings') || '{}');
 
@@ -367,26 +372,26 @@ export class CadViewer {
         threeContainer.appendChild(this.renderer.domElement);
 
         // --- 3. Lights ---
-        this.lights.ambientLight = new THREEModules.AmbientLight(0xffffff, this.settings.lighting.ambientIntensity * 1.2);
+        this.lights.ambientLight = new THREEModules.AmbientLight(0xffffff, this.settings.lighting.ambientIntensity);
 
         // Key Light
         this.lights.mainLight = new THREEModules.DirectionalLight(0xffffff, this.settings.lighting.mainIntensity);
         this.lights.mainLight.position.set(500, 500, 500);
 
         // Fill Light (Front-Left)
-        this.lights.fillLight = new THREEModules.DirectionalLight(0xffffff, this.settings.lighting.mainIntensity * 0.7);
+        this.lights.fillLight = new THREEModules.DirectionalLight(0xffffff, this.settings.lighting.mainIntensity * 0.5);
         this.lights.fillLight.position.set(-500, 250, 500);
 
         // Back Light
-        this.lights.backLight = new THREEModules.DirectionalLight(0xffffff, this.settings.lighting.mainIntensity * 0.5);
+        this.lights.backLight = new THREEModules.DirectionalLight(0xffffff, this.settings.lighting.mainIntensity * 0.4);
         this.lights.backLight.position.set(0, 250, -750);
 
-        // Top Light
-        this.lights.topLight = new THREEModules.DirectionalLight(0xffffff, this.settings.lighting.mainIntensity * 0.4);
+        // Top Light (Softer so top faces don't get blown out)
+        this.lights.topLight = new THREEModules.DirectionalLight(0xffffff, this.settings.lighting.mainIntensity * 0.25);
         this.lights.topLight.position.set(0, 750, 0);
 
         // Bottom Light
-        this.lights.bottomLight = new THREEModules.DirectionalLight(0xffffff, this.settings.lighting.mainIntensity * 0.4);
+        this.lights.bottomLight = new THREEModules.DirectionalLight(0xffffff, this.settings.lighting.mainIntensity * 0.2);
         this.lights.bottomLight.position.set(0, -750, 0);
 
         this.lights.hemiLight = new THREEModules.HemisphereLight(0xffffff, 0x888888, this.settings.lighting.hemiIntensity);
@@ -570,7 +575,7 @@ export class CadViewer {
     }
 
     rebuildMergedModel() {
-        console.time('Rebuild Merged Layer');
+        // console.time('Rebuild Merged Layer');
 
         // Persist rotation
         const currentRotation = this.model ? this.model.quaternion.clone() : new THREEModules.Quaternion();
@@ -637,7 +642,7 @@ export class CadViewer {
             setTimeout(() => this.generateEdges(this.originalModel), 100);
         }
 
-        console.timeEnd('Rebuild Merged Layer');
+        // console.timeEnd('Rebuild Merged Layer');
         this.needsRender = true;
         this.resumeRendering();
     }
@@ -878,11 +883,23 @@ export class CadViewer {
                 const textureLoader = new THREEModules.TextureLoader();
                 texture = textureLoader.load(color_image, (loadedTex) => {
                     loadedTex.colorSpace = THREEModules.SRGBColorSpace;
+                    loadedTex.generateMipmaps = true;
+                    loadedTex.minFilter = THREEModules.LinearMipmapLinearFilter;
+                    loadedTex.magFilter = THREEModules.LinearFilter;
+                    if (this.renderer && this.renderer.capabilities) {
+                        loadedTex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+                    }
                     this.rebuildMergedModel();
                 });
                 texture.wrapS = THREEModules.RepeatWrapping;
                 texture.wrapT = THREEModules.RepeatWrapping;
                 texture.colorSpace = THREEModules.SRGBColorSpace;
+                texture.generateMipmaps = true;
+                texture.minFilter = THREEModules.LinearMipmapLinearFilter;
+                texture.magFilter = THREEModules.LinearFilter;
+                if (this.renderer && this.renderer.capabilities) {
+                    texture.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+                }
                 this.textureCache.set(color_image, texture);
             } else {
                 texture.wrapS = THREEModules.RepeatWrapping;
@@ -900,7 +917,7 @@ export class CadViewer {
             }
 
             // applyTriplanarMapping(mat, boxMin, boxSize);
-            applyTriplanarMapping1(mat, 0.001);
+            applyTriplanarMapping1(mat, 0.0005);
             mat.map = texture;
             mat.color.setHex(0xffffff);
 
@@ -912,8 +929,8 @@ export class CadViewer {
             mat.depthWrite = true;
 
             // Adjust material properties for realistic textured surfaces (e.g., wood)
-            mat.roughness = 0.75; // Slightly more reflective for richer grain look
-            mat.metalness = 0.0;
+            mat.roughness = 0.45; // Satin finish for rich finished furniture look
+            mat.metalness = 0.04;
 
             mat.needsUpdate = true;
         } else {
@@ -1129,53 +1146,6 @@ export class CadViewer {
         }
         console.timeEnd('Generate Edges');
         this.needsRender = true;
-    }
-
-    updateSetting(key, value) {
-        this.setProcessing(true, 'Updating Rendering...');
-        setTimeout(() => {
-            if (key === 'ambientIntensity') {
-                this.settings.lighting.ambientIntensity = parseFloat(value);
-                this.lights.ambientLight.intensity = parseFloat(value) * 1.2;
-            }
-            if (key === 'mainIntensity') {
-                const val = parseFloat(value);
-                this.settings.lighting.mainIntensity = val;
-                this.lights.mainLight.intensity = val;
-                this.lights.fillLight.intensity = val * 0.7;
-                this.lights.backLight.intensity = val * 0.5;
-                this.lights.topLight.intensity = val * 0.4;
-                this.lights.bottomLight.intensity = val * 0.4;
-            }
-            if (key === 'hemiIntensity') {
-                this.settings.lighting.hemiIntensity = parseFloat(value);
-                this.lights.hemiLight.intensity = parseFloat(value);
-            }
-            if (key === 'exposure') {
-                this.settings.lighting.exposure = parseFloat(value);
-                this.renderer.toneMappingExposure = parseFloat(value);
-            }
-
-            if (key === 'bgColor') {
-                this.settings.bgColor = value;
-                this.scene.background.set(value);
-            }
-
-            if (key === 'edgeColor' || key === 'edgeOpacity') {
-                const color = new THREEModules.Color(this.settings.edgeColor);
-                const opacity = parseFloat(this.settings.edgeOpacity);
-                this.edgeObjects.forEach(edge => {
-                    if (edge.material) {
-                        edge.material.color.copy(color);
-                        edge.material.opacity = opacity;
-                    }
-                });
-            }
-            this.needsRender = true;
-            this.resumeRendering();
-            localStorage.setItem('stp_viewer_settings', JSON.stringify(this.settings));
-            this.setProcessing(false);
-        }, 20);
     }
 
     onMouseMove(e) {
