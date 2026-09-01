@@ -38,7 +38,62 @@ async function cacheModel(url, buffer) {
         db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(buffer, url);
     } catch (e) { console.warn('Cache failed', e); }
 }
+function applyTriplanarMapping1(material, textureScale = 0.05) {
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.triplanarScale = { value: textureScale };
 
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <common>',
+            `
+            #include <common>
+            varying vec3 vWorldPos;
+            varying vec3 vWorldNormal;
+            `
+        );
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <worldpos_vertex>',
+            `
+            #include <worldpos_vertex>
+            vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+            vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+            `
+        );
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <common>',
+            `
+            #include <common>
+            uniform float triplanarScale;
+            varying vec3 vWorldPos;
+            varying vec3 vWorldNormal;
+            
+            vec4 getTriplanarMap(sampler2D map) {
+                // Use a high power for sharp face transitions (no blurry edges)
+                vec3 blending = pow(abs(vWorldNormal), vec3(16.0));
+                blending = normalize(max(blending, 0.00001)); 
+                float b = (blending.x + blending.y + blending.z);
+                blending /= vec3(b, b, b);
+                
+                vec4 xaxis = texture2D(map, vWorldPos.yz * triplanarScale);
+                vec4 yaxis = texture2D(map, vWorldPos.xz * triplanarScale);
+                vec4 zaxis = texture2D(map, vWorldPos.xy * triplanarScale);
+                
+                return xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
+            }
+            `
+        );
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <map_fragment>',
+            `
+            #ifdef USE_MAP
+                vec4 sampledDiffuseColor = getTriplanarMap(map);
+                diffuseColor *= sampledDiffuseColor;
+            #endif
+            `
+        );
+    };
+}
 function applyTriplanarMapping(material, boxMin = new THREEModules.Vector3(0, 0, 0), boxSize = new THREEModules.Vector3(1, 1, 1)) {
     material.userData.boxMin = boxMin;
     material.userData.boxSize = boxSize;
@@ -74,13 +129,13 @@ function applyTriplanarMapping(material, boxMin = new THREEModules.Vector3(0, 0,
             varying vec3 vWorldNormal;
             
             vec4 getTriplanarMap(sampler2D map) {
-                // FIX 1: UNIFORM SCALE. Use the largest dimension so the image stays proportional
-                // It fits the largest side and cleanly truncates/hides on the smaller sides.
-                float maxSize = max(boxSize.x, max(boxSize.y, boxSize.z));
-                vec3 normPos = (vWorldPos - boxMin) / max(maxSize, 0.0001);
-                
-                // Clamp to strictly prevent repeating
-                normPos = clamp(normPos, 0.0, 1.0);
+                // FIX 1: PER-AXIS SCALE. Each axis is independently normalized by its own
+                // bounding-box dimension, so the texture fills every face completely (0→1
+                // on both U and V), regardless of the face's aspect ratio.
+                vec3 normPos;
+                normPos.x = clamp((vWorldPos.x - boxMin.x) / max(boxSize.x, 0.0001), 0.0, 1.0);
+                normPos.y = clamp((vWorldPos.y - boxMin.y) / max(boxSize.y, 0.0001), 0.0, 1.0);
+                normPos.z = clamp((vWorldPos.z - boxMin.z) / max(boxSize.z, 0.0001), 0.0, 1.0);
                 
                 // FIX 2: SHARP BLENDING. Use pow(..., 16.0) to make razor-sharp corners 
                 // instead of blurry overlaps.
@@ -148,7 +203,9 @@ export class CadViewer {
                 ambientIntensity: 0.4,
                 mainIntensity: 1.7,
                 hemiIntensity: 0.5,
-                exposure: 2.2,
+                // FIX 3: Lower exposure from 2.2 → 1.2. The old value over-exposed textured
+                // surfaces (bright wood → blown-out white). Still user-adjustable via Lights panel.
+                exposure: 1.2,
             },
             edgeColor: "#000000",
             edgeOpacity: 1,
@@ -692,25 +749,25 @@ export class CadViewer {
             let groupConfig = groups.find(g => g.displayName === key);
             let colors = groupConfig ? (groupConfig.colors || []) : [];
 
-            if (key === 'Others') {
-                colors = [
-                    { color_name: 'White', color_value: '#ffffff' },
-                    { color_name: 'Black', color_value: '#000000' },
-                    { color_name: 'Golden', color_value: '#ffd700' },
-                    { color_name: 'Wood', color_value: '#8b5a2b' },
-                    { color_name: 'Red', color_value: '#ff0000' },
-                    { color_name: 'Green', color_value: '#008000' },
-                    { color_name: 'Blue', color_value: '#0000ff' },
-                    { color_name: 'Grey', color_value: '#808080' },
-                    { color_name: 'Silver', color_value: '#c0c0c0' },
-                    { color_name: 'Orange', color_value: '#ffa500' },
-                    { color_name: 'Purple', color_value: '#800080' }
-                ];
-            }
+            // if (key === 'Others') {
+            //     colors = [
+            //         { color_name: 'White', color_value: '#ffffff' },
+            //         { color_name: 'Black', color_value: '#000000' },
+            //         { color_name: 'Golden', color_value: '#ffd700' },
+            //         { color_name: 'Wood', color_value: '#8b5a2b' },
+            //         { color_name: 'Red', color_value: '#ff0000' },
+            //         { color_name: 'Green', color_value: '#008000' },
+            //         { color_name: 'Blue', color_value: '#0000ff' },
+            //         { color_name: 'Grey', color_value: '#808080' },
+            //         { color_name: 'Silver', color_value: '#c0c0c0' },
+            //         { color_name: 'Orange', color_value: '#ffa500' },
+            //         { color_name: 'Purple', color_value: '#800080' }
+            //     ];
+            // }
 
-            if (key === 'Others' && groupsDict[key].length === 0) {
-                continue;
-            }
+            // if (key === 'Others' && groupsDict[key].length === 0) {
+            //     continue;
+            // }
 
             results.push({
                 id: groupConfig ? groupConfig.id : "group_others",
@@ -823,13 +880,13 @@ export class CadViewer {
                     loadedTex.colorSpace = THREEModules.SRGBColorSpace;
                     this.rebuildMergedModel();
                 });
-                texture.wrapS = THREEModules.ClampToEdgeWrapping;
-                texture.wrapT = THREEModules.ClampToEdgeWrapping;
+                texture.wrapS = THREEModules.RepeatWrapping;
+                texture.wrapT = THREEModules.RepeatWrapping;
                 texture.colorSpace = THREEModules.SRGBColorSpace;
                 this.textureCache.set(color_image, texture);
             } else {
-                texture.wrapS = THREEModules.ClampToEdgeWrapping;
-                texture.wrapT = THREEModules.ClampToEdgeWrapping;
+                texture.wrapS = THREEModules.RepeatWrapping;
+                texture.wrapT = THREEModules.RepeatWrapping;
             }
 
             let boxMin = new THREEModules.Vector3(0, 0, 0);
@@ -842,12 +899,20 @@ export class CadViewer {
                 }
             }
 
-            applyTriplanarMapping(mat, boxMin, boxSize);
+            // applyTriplanarMapping(mat, boxMin, boxSize);
+            applyTriplanarMapping1(mat, 0.001);
             mat.map = texture;
             mat.color.setHex(0xffffff);
 
+            // FIX 2: RESET TRANSPARENCY. GLTF materials from CAD converters often inherit
+            // transparent=true / opacity<1. Combined with a white base color this creates the
+            // ghostly/glass look. Explicitly force full opacity when a texture is active.
+            mat.transparent = false;
+            mat.opacity = 1.0;
+            mat.depthWrite = true;
+
             // Adjust material properties for realistic textured surfaces (e.g., wood)
-            mat.roughness = 0.8; // Matte finish, not too shiny
+            mat.roughness = 0.75; // Slightly more reflective for richer grain look
             mat.metalness = 0.0;
 
             mat.needsUpdate = true;
