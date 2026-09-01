@@ -38,24 +38,26 @@ async function cacheModel(url, buffer) {
         db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(buffer, url);
     } catch (e) { console.warn('Cache failed', e); }
 }
-function applyTriplanarMapping1(material, textureScale = 0.05) {
+function applyTriplanarMapping(material, textureScale = 0.00055) {
+    material.userData.triplanarScale = textureScale;
+
     material.onBeforeCompile = (shader) => {
-        shader.uniforms.triplanarScale = { value: textureScale };
+        shader.uniforms.triplanarScale = { value: material.userData.triplanarScale || textureScale };
 
         shader.vertexShader = shader.vertexShader.replace(
             '#include <common>',
             `
             #include <common>
-            varying vec3 vWorldPos;
-            varying vec3 vWorldNormal;
+            varying vec3 vModelPos;
+            varying vec3 vModelNormal;
             `
         );
         shader.vertexShader = shader.vertexShader.replace(
             '#include <worldpos_vertex>',
             `
             #include <worldpos_vertex>
-            vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
-            vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+            vModelPos = transformed;
+            vModelNormal = normalize(normal);
             `
         );
 
@@ -64,19 +66,22 @@ function applyTriplanarMapping1(material, textureScale = 0.05) {
             `
             #include <common>
             uniform float triplanarScale;
-            varying vec3 vWorldPos;
-            varying vec3 vWorldNormal;
+            varying vec3 vModelPos;
+            varying vec3 vModelNormal;
             
             vec4 getTriplanarMap(sampler2D map) {
-                // Use a high power for sharp face transitions (no blurry edges)
-                vec3 blending = pow(abs(vWorldNormal), vec3(16.0));
+                // Sharp blending using local model normal (prevents diagonal seams on flat faces)
+                vec3 blending = pow(abs(vModelNormal), vec3(12.0));
                 blending = normalize(max(blending, 0.00001)); 
                 float b = (blending.x + blending.y + blending.z);
                 blending /= vec3(b, b, b);
                 
-                vec4 xaxis = texture2D(map, vWorldPos.yz * triplanarScale);
-                vec4 yaxis = texture2D(map, vWorldPos.xz * triplanarScale);
-                vec4 zaxis = texture2D(map, vWorldPos.xy * triplanarScale);
+                // Side projection (X-normal faces: legs/sides)
+                vec4 xaxis = texture2D(map, vModelPos.zy * triplanarScale);
+                // Top/Bottom projection (Y-normal faces: tabletop - perfectly uniform, no seams!)
+                vec4 yaxis = texture2D(map, vModelPos.xz * triplanarScale);
+                // Front/Back projection (Z-normal faces: front/back panels)
+                vec4 zaxis = texture2D(map, vModelPos.xy * triplanarScale);
                 
                 return xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
             }
@@ -95,85 +100,7 @@ function applyTriplanarMapping1(material, textureScale = 0.05) {
     };
 
     material.customProgramCacheKey = function () {
-        return 'triplanar1_' + (material.map ? material.map.id : 'nomap') + '_' + textureScale;
-    };
-}
-
-function applyTriplanarMapping(material, boxMin = new THREEModules.Vector3(0, 0, 0), boxSize = new THREEModules.Vector3(1, 1, 1)) {
-    material.userData.boxMin = boxMin;
-    material.userData.boxSize = boxSize;
-
-    material.onBeforeCompile = (shader) => {
-        shader.uniforms.boxMin = { value: material.userData.boxMin || boxMin };
-        shader.uniforms.boxSize = { value: material.userData.boxSize || boxSize };
-
-        shader.vertexShader = shader.vertexShader.replace(
-            '#include <common>',
-            `
-            #include <common>
-            varying vec3 vWorldPos;
-            varying vec3 vWorldNormal;
-            `
-        );
-        shader.vertexShader = shader.vertexShader.replace(
-            '#include <worldpos_vertex>',
-            `
-            #include <worldpos_vertex>
-            vWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
-            vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
-            `
-        );
-
-        shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <common>',
-            `
-            #include <common>
-            uniform vec3 boxMin;
-            uniform vec3 boxSize;
-            varying vec3 vWorldPos;
-            varying vec3 vWorldNormal;
-            
-            vec4 getTriplanarMap(sampler2D map) {
-                // FIX 1: PER-AXIS SCALE. Each axis is independently normalized by its own
-                // bounding-box dimension, so the texture fills every face completely (0→1
-                // on both U and V), regardless of the face's aspect ratio.
-                vec3 normPos;
-                normPos.x = clamp((vWorldPos.x - boxMin.x) / max(boxSize.x, 0.0001), 0.0, 1.0);
-                normPos.y = clamp((vWorldPos.y - boxMin.y) / max(boxSize.y, 0.0001), 0.0, 1.0);
-                normPos.z = clamp((vWorldPos.z - boxMin.z) / max(boxSize.z, 0.0001), 0.0, 1.0);
-                
-                // FIX 2: SHARP BLENDING. Use pow(..., 16.0) to make razor-sharp corners 
-                // instead of blurry overlaps.
-                vec3 blending = pow(abs(vWorldNormal), vec3(16.0));
-                blending = normalize(max(blending, 0.00001)); 
-                blending /= (blending.x + blending.y + blending.z);
-                
-                // Project on 3 axes
-                vec4 xaxis = texture2D(map, vec2(normPos.z, 1.0 - normPos.y));
-                vec4 yaxis = texture2D(map, vec2(normPos.x, 1.0 - normPos.z));
-                vec4 zaxis = texture2D(map, vec2(normPos.x, 1.0 - normPos.y));
-                
-                return xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
-            }
-            `
-        );
-
-        // FIX 3: RESTORE LIGHTING. We multiply the diffuseColor by our texture,
-        // and allow Three.js standard lights and shadows to handle the rest.
-        shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <map_fragment>',
-            `
-            #ifdef USE_MAP
-                vec4 sampledDiffuseColor = getTriplanarMap(map);
-                diffuseColor *= sampledDiffuseColor; 
-            #endif
-            `
-        );
-        // (Removed the opaque_fragment override so standard scene lighting works normally)
-    };
-
-    material.customProgramCacheKey = function () {
-        return 'triplanar_' + (material.map ? material.map.id : 'nomap') + '_sharp';
+        return 'triplanar_local_' + (material.map ? material.map.id : 'nomap') + '_' + textureScale;
     };
 }
 
@@ -610,9 +537,8 @@ export class CadViewer {
                 if (isEffectiveVisible) {
                     const mat = node.material;
                     const mapId = mat.map ? mat.map.id : 0;
-                    const boxKey = mat.userData && mat.userData.boxMin && mat.userData.boxSize ?
-                        `${mat.userData.boxMin.x.toFixed(2)}_${mat.userData.boxMin.y.toFixed(2)}_${mat.userData.boxMin.z.toFixed(2)}_${mat.userData.boxSize.x.toFixed(2)}_${mat.userData.boxSize.y.toFixed(2)}_${mat.userData.boxSize.z.toFixed(2)}` : 'nobox';
-                    const key = `${mat.color.getHex()}_${mat.opacity}_${mat.transparent}_${mat.metalness || 0}_${mat.roughness || 1}_${mapId}_${boxKey}`;
+                    const scaleKey = mat.userData && mat.userData.triplanarScale ? mat.userData.triplanarScale : 'noscale';
+                    const key = `${mat.color.getHex()}_${mat.opacity}_${mat.transparent}_${mat.metalness || 0}_${mat.roughness || 1}_${mapId}_${scaleKey}`;
 
                     if (!materialGroups.has(key)) {
                         materialGroups.set(key, { material: mat, geometries: [] });
@@ -906,18 +832,7 @@ export class CadViewer {
                 texture.wrapT = THREEModules.RepeatWrapping;
             }
 
-            let boxMin = new THREEModules.Vector3(0, 0, 0);
-            let boxSize = new THREEModules.Vector3(1, 1, 1);
-            if (partObj) {
-                const box = new THREEModules.Box3().setFromObject(partObj);
-                if (!box.isEmpty()) {
-                    boxMin = box.min.clone();
-                    boxSize = box.getSize(new THREEModules.Vector3());
-                }
-            }
-
-            // applyTriplanarMapping(mat, boxMin, boxSize);
-            applyTriplanarMapping1(mat, 0.0005);
+            applyTriplanarMapping(mat, 0.00055);
             mat.map = texture;
             mat.color.setHex(0xffffff);
 
@@ -936,9 +851,7 @@ export class CadViewer {
         } else {
             mat.map = null;
             delete mat.onBeforeCompile;
-            delete mat.customProgramCacheKey;
-            mat.userData.boxMin = null;
-            mat.userData.boxSize = null;
+            mat.userData.triplanarScale = null;
             mat.color.set(colorValue);
 
             // Restore default properties for untextured parts
