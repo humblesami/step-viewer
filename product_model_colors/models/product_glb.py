@@ -86,15 +86,19 @@ class ProductTemplate(models.Model):
             if product.parts_group_ids:
                 product.parts_group_ids.unlink()
             all_search_terms = self.env['part.search'].search([])
+            assigned_part_ids = set()
             for term in all_search_terms:
-                matched_parts = [p for p in part_names if term.search_term.lower() in p.lower()]
-                if not matched_parts:
+                matched_part_records = product.step_file_id.glb_part_ids.filtered(
+                    lambda p: p.id not in assigned_part_ids and term.search_term.lower() in p.part_name.lower()
+                )
+                if not matched_part_records:
                     continue
+                assigned_part_ids.update(matched_part_records.ids)
                 values = {
                     'product_tmpl_id': product.id,
                     'group_title': term.term_group_name,
-                    'part_count': len(matched_parts),
-                    'color_template_id': default_template.id,
+                    'part_ids': [(6, 0, matched_part_records.ids)],
+                    'color_template_id': default_template.id if default_template else False,
                 }
                 self.env['parts.group'].create(values)
 

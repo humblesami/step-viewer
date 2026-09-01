@@ -65,7 +65,7 @@
                                     <field name="color_template_id" string="Colors Template"/>
                                     <field name="part_count" string="Count" readonly="1"/>
                                 </group>
-                                <field name="part_ids" nolabel="1" widget="many2many" domain="[('att_id', '=', parent.step_file_id)]">
+                                <field name="part_ids" nolabel="1" widget="many2many" domain="[('att_id', '=', parent.step_file_id), '|', ('part_group_id', '=', False), ('part_group_id', '=', id)]">
                                     <list>
                                         <field name="part_number"/>
                                         <field name="part_name" string="Part Name"/>
