@@ -38,11 +38,13 @@ async function cacheModel(url, buffer) {
         db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(buffer, url);
     } catch (e) { console.warn('Cache failed', e); }
 }
-function applyTriplanarMapping(material, textureScale = 0.00055) {
+function applyTriplanarMapping(material, textureScale = 0.00055, modelMin = new THREEModules.Vector3(0, 0, 0)) {
     material.userData.triplanarScale = textureScale;
+    material.userData.modelMin = modelMin;
 
     material.onBeforeCompile = (shader) => {
         shader.uniforms.triplanarScale = { value: material.userData.triplanarScale || textureScale };
+        shader.uniforms.modelMin = { value: material.userData.modelMin || modelMin };
 
         shader.vertexShader = shader.vertexShader.replace(
             '#include <common>',
@@ -66,6 +68,7 @@ function applyTriplanarMapping(material, textureScale = 0.00055) {
             `
             #include <common>
             uniform float triplanarScale;
+            uniform vec3 modelMin;
             varying vec3 vModelPos;
             varying vec3 vModelNormal;
             
@@ -76,12 +79,16 @@ function applyTriplanarMapping(material, textureScale = 0.00055) {
                 float b = (blending.x + blending.y + blending.z);
                 blending /= vec3(b, b, b);
                 
+                // Shift coordinates by model minimum so coordinates are strictly positive (>= 0.0)
+                // This completely eliminates the 0-crossing split/cut/bump down the middle of the object!
+                vec3 pos = vModelPos - modelMin;
+                
                 // Side projection (X-normal faces: legs/sides)
-                vec4 xaxis = texture2D(map, vModelPos.zy * triplanarScale);
-                // Top/Bottom projection (Y-normal faces: tabletop - perfectly uniform, no seams!)
-                vec4 yaxis = texture2D(map, vModelPos.xz * triplanarScale);
+                vec4 xaxis = texture2D(map, pos.zy * triplanarScale);
+                // Top/Bottom projection (Y-normal faces: tabletop - perfectly continuous across the entire surface!)
+                vec4 yaxis = texture2D(map, pos.xz * triplanarScale);
                 // Front/Back projection (Z-normal faces: front/back panels)
-                vec4 zaxis = texture2D(map, vModelPos.xy * triplanarScale);
+                vec4 zaxis = texture2D(map, pos.xy * triplanarScale);
                 
                 return xaxis * blending.x + yaxis * blending.y + zaxis * blending.z;
             }
@@ -406,6 +413,9 @@ export class CadViewer {
                 // Center the original model
                 this.originalModel.position.set(-center.x, -center.y, -center.z);
                 this.originalModel.updateMatrixWorld(true);
+
+                // Calculate minimum corner in centered local space (used to offset triplanar coordinates)
+                this.modelMin = new THREEModules.Box3().setFromObject(this.originalModel).min.clone();
 
                 // Pre-calculate world-space geometries and cache them to avoid cloning/transforming in every rebuild
                 console.time('Pre-calculate Geometries');
@@ -817,8 +827,8 @@ export class CadViewer {
                     }
                     this.rebuildMergedModel();
                 });
-                texture.wrapS = THREEModules.RepeatWrapping;
-                texture.wrapT = THREEModules.RepeatWrapping;
+                texture.wrapS = THREEModules.MirroredRepeatWrapping;
+                texture.wrapT = THREEModules.MirroredRepeatWrapping;
                 texture.colorSpace = THREEModules.SRGBColorSpace;
                 texture.generateMipmaps = true;
                 texture.minFilter = THREEModules.LinearMipmapLinearFilter;
@@ -828,11 +838,12 @@ export class CadViewer {
                 }
                 this.textureCache.set(color_image, texture);
             } else {
-                texture.wrapS = THREEModules.RepeatWrapping;
-                texture.wrapT = THREEModules.RepeatWrapping;
+                texture.wrapS = THREEModules.MirroredRepeatWrapping;
+                texture.wrapT = THREEModules.MirroredRepeatWrapping;
             }
 
-            applyTriplanarMapping(mat, 0.00055);
+            const modelMin = this.modelMin || new THREEModules.Vector3(-1000, -1000, -1000);
+            applyTriplanarMapping(mat, 0.00055, modelMin);
             mat.map = texture;
             mat.color.setHex(0xffffff);
 
@@ -851,7 +862,9 @@ export class CadViewer {
         } else {
             mat.map = null;
             delete mat.onBeforeCompile;
+            delete mat.customProgramCacheKey;
             mat.userData.triplanarScale = null;
+            mat.userData.modelMin = null;
             mat.color.set(colorValue);
 
             // Restore default properties for untextured parts
